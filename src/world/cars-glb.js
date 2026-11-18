@@ -13,6 +13,7 @@ import { extentBounds } from './extent.js';
 import { registerLodHook, LOD } from './lod.js';
 import { QUALITY } from '../quality.js';
 import { staticCull } from '../renderer/batched-cull.js';
+import { loadMazda2, buildMazda2 } from './mazda2.js';
 import {
   buildCars, buildParkedProcedural, carMovers, seat, groundReflect, clampRadiance,
   CAR_MAX_RADIANCE, shared, blockedBay,
@@ -41,7 +42,7 @@ export function preloadCars() {
   // from modelling ones
   const raw = new URLSearchParams(location.search).get('hero') === 'raw';
   const hero = raw ? loader.loadAsync('/blender/_raw/convertible.glb').catch(() => null) : get('convertible');
-  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor')]);
+  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2()]);
   return pending;
 }
 
@@ -1396,7 +1397,7 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
 export async function buildCarsGlb(scene, renderer) {
   // ?cars=procedural: the old procedural set (comparison / fallback check)
   if (new URLSearchParams(location.search).get('cars') === 'procedural') return buildCars(scene);
-  const [heroGltf, parkedGltf, vinylNor, carpetNor] = await preloadCars();
+  const [heroGltf, parkedGltf, vinylNor, carpetNor, mazdaGltf] = await preloadCars();
   if (!heroGltf) return buildCars(scene);
   const probe = createProbe(renderer, scene);
   probe.capture(CAR.z, true);
@@ -1449,14 +1450,18 @@ export async function buildCarsGlb(scene, renderer) {
     m.parkedClassic = true;
     return m;
   });
+  // the Mazda2 (models/mazda2.glb), parked in the nearest free bay to the hero; its box joins
+  // the colliders
+  const mazda = buildMazda2(scene, mazdaGltf, { env, colliders, lodDistance: LOD.cars });
   const all = [hero, ...pool, ...parkedClassics];
   probe.hide.push(hero.car, ...pool.map((m) => m.car), ...parkedClassics.map((m) => m.car));
+  if (mazda) probe.hide.push(mazda.car);
   if (fleet) probe.hide.push(...Object.values(fleet.batches).map((b) => b.bm), fleet.blobs);
   const tmp = new THREE.Vector3();
   const kit = trafficKit(scene, parkedGltf, M, env, pool, probe);
   let heroDriven = false, heroChase = false;
   return {
-    hero: hero.car, mover: pool[0].car, movers: pool.map((m) => m.car), colliders, fleet, probe, glb: true,
+    hero: hero.car, mazda: mazda?.car ?? null, mover: pool[0].car, movers: pool.map((m) => m.car), colliders, fleet, probe, glb: true,
     parkedClassics: parkedClassics.map((m) => m.car),
     traffic: kit,
     // the drivable hero (vehicles/index.js): start pose in sim terms, pose from the sim, eye
@@ -1493,6 +1498,7 @@ export async function buildCarsGlb(scene, renderer) {
     update(dt, cars, camera, busy = false) {
       if (!camera) return;
       kit.tick();
+      mazda?.update(camera);
       probe.follow(camera.position);
       const inside = heroDriven && !heroChase;
       M.screen.userData.uInside.value = inside ? 1 : 0;

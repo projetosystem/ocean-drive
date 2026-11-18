@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-18: Mazda2
+
+- A 2015 Mazda2 hatchback (`public/models/mazda2.glb`) is parked at the nearest free bay of the
+  west curb to the convertible, loaded with the `GLTFLoader` (`src/world/mazda2.js`, started
+  early from `preloadCars`). The file is fitted to the scene: scaled to the real car's 4.06 m,
+  its origin the middle of the wheelbase with the tyres on the road, turned to face south like
+  the rest of the curb (the model's nose is at -z), and given a collider and a contact shadow.
+  Its materials are rebuilt per part (lacquer, chrome, rubber, alpha glass in place of the
+  file's transmission glass) on the same reflection chunks as the fleet. It is scenery for now
+  (it blocks the walker, but cannot be driven) and is left out of the `?shot` frames.
+- **Provenance:** *2015 Mazda2* by ActsOfDoge on Sketchfab
+  (https://sketchfab.com/3d-models/2015-mazda2-a288a11333a044689702cc5d3f910a5d), under the
+  Sketchfab Standard license. Check that license before redistributing the file.
+
 ## 2026-10-01: fast travel
 
 - The number keys 1–0 (touch: a pin button top right with the same list) jump to ten places
