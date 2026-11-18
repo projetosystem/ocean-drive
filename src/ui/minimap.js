@@ -3,7 +3,7 @@
 // the layout (the drive and its cross streets, the sidewalks, the hotel row, the park and its
 // promenade, the sand, the sea) into a canvas once; it is moved and turned under the disc by
 // a CSS transform (the compositor's work, no per-frame drawing), with the markers: you (a gold
-// chevron) and the saved car (a small ivory lozenge, pinned to the rim when off the map). Heading up by default; N hides / shows it,
+// chevron) and the saved car (a small ivory lozenge, pinned to the rim when off the map) and a teal pin on the parked Mazda2 (also pinned to the rim). Heading up by default; N hides / shows it,
 // Shift+N switches heading up / north up. Never in ?shot mode.
 import { HOTEL, SIDEWALK_W, SIDEWALK_E, LANES, PARKING, PARK, SAND, OCEAN, CROSS, CROSS_STREETS, TOWERS } from '../world/layout.js';
 import { promenadeX } from '../world/crowd.js';
@@ -17,6 +17,7 @@ const CSS = `
 #minimap .map { position: absolute; left: -3px; top: -3px; transform-origin: 0 0; will-change: transform; }
 #minimap .map canvas { display: block; }
 #minimap .saved { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; background: rgba(255, 246, 228, 0.95); border: 1px solid rgba(120, 72, 40, 0.8); will-change: transform; }
+#minimap .pin { position: absolute; left: -3px; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: rgba(104, 214, 196, 0.95); border: 1px solid rgba(20, 60, 56, 0.9); will-change: transform; }
 #minimap svg { position: absolute; inset: 0; width: 150px; height: 150px; overflow: visible; }
 #minimap .compass { will-change: transform; }
 #minimap .compass text { font: italic 600 13px Didot, 'Bodoni 72', 'Bodoni MT', 'Playfair Display', Georgia, serif; fill: #fff4e6; }
@@ -72,7 +73,7 @@ function drawStatic(footprints) {
   return c;
 }
 
-export function createMinimap({ footprints = [], shot = false, getPose, getSaved = () => null } = {}) {
+export function createMinimap({ footprints = [], shot = false, getPose, getSaved = () => null, getPin = () => null } = {}) {
   if (shot || typeof document === 'undefined') return { update() {}, toggle() {}, get visible() { return false; } };
   const style = document.createElement('style');
   style.textContent = CSS;
@@ -84,7 +85,7 @@ export function createMinimap({ footprints = [], shot = false, getPose, getSaved
   const r = SIZE / 2;
   const ticks = [0, 1, 2, 3].map((q) => { const a = q * Math.PI / 2 - Math.PI / 2, c = Math.cos(a), sn = Math.sin(a); return `<line x1="${(r + c * (r - 8)).toFixed(1)}" y1="${(r + sn * (r - 8)).toFixed(1)}" x2="${(r + c * (r - 1)).toFixed(1)}" y2="${(r + sn * (r - 1)).toFixed(1)}" stroke-width="${q ? 0.8 : 1.4}" />`; }).join('');
   el.innerHTML = `
-    <div class="disc"><div class="map"></div><i class="saved"></i></div>
+    <div class="disc"><div class="map"></div><i class="saved"></i><i class="pin"></i></div>
     <svg class="compass" viewBox="0 0 ${SIZE} ${SIZE}"><g stroke="rgba(246, 214, 154, 0.9)">${ticks}</g>
       <circle class="badge" cx="${r}" cy="7" r="8.5" /><text x="${r}" y="7.5" text-anchor="middle" dominant-baseline="middle">N</text></svg>
     <svg class="frame" viewBox="0 0 ${SIZE} ${SIZE}"><circle cx="${r}" cy="${r}" r="${r - 0.5}" stroke="rgba(24, 14, 8, 0.55)" stroke-width="1" fill="none" />
@@ -93,7 +94,7 @@ export function createMinimap({ footprints = [], shot = false, getPose, getSaved
     <svg class="you" viewBox="-8 -8 16 16"><defs><linearGradient id="mm-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff6d8" /><stop offset="1" stop-color="#e9b765" /></linearGradient></defs>
       <path d="M0 -7 L5.2 5.4 L0 2.4 L-5.2 5.4 Z" fill="url(#mm-gold)" stroke="rgba(36, 20, 10, 0.95)" stroke-width="1.1" stroke-linejoin="round" /></svg>`;
   document.body.appendChild(el);
-  const mapEl = el.querySelector('.map'), compass = el.querySelector('.compass'), you = el.querySelector('.you'), savedEl = el.querySelector('.saved');
+  const mapEl = el.querySelector('.map'), compass = el.querySelector('.compass'), you = el.querySelector('.you'), savedEl = el.querySelector('.saved'), pinEl = el.querySelector('.pin');
   const map = drawStatic(footprints);
   map.style.width = `${map.width * VIEW / PX}px`;
   map.style.height = `${map.height * VIEW / PX}px`;
@@ -129,6 +130,16 @@ export function createMinimap({ footprints = [], shot = false, getPose, getSaved
       const d = Math.hypot(sx, sy), lim = r - 9;
       if (d > lim) { sx *= lim / d; sy *= lim / d; }
       savedEl.style.transform = `translate(${(r + sx).toFixed(1)}px, ${(r + sy).toFixed(1)}px) translate(-50%, -50%) rotate(45deg)`;
+    }
+    // a landmark pin (the parked Mazda2): a teal dot, on the rim when off the map
+    const q = getPin();
+    pinEl.style.display = q ? 'block' : 'none';
+    if (q) {
+      const dx = (q.x - p.x) * k, dz = (q.z - p.z) * k, c = Math.cos(rot), sn = Math.sin(rot);
+      let sx = dx * c - dz * sn, sy = dx * sn + dz * c;
+      const d = Math.hypot(sx, sy), lim = r - 9;
+      if (d > lim) { sx *= lim / d; sy *= lim / d; }
+      pinEl.style.transform = `translate(${(r + sx).toFixed(1)}px, ${(r + sy).toFixed(1)}px) translate(-50%, -50%)`;
     }
   }
 

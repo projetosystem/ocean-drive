@@ -142,6 +142,7 @@ export function buildMazda2(scene, gltf, { env, colliders, lodDistance }) {
   const x = CAR.x + 0.05;
   seat(car, x, z, 0);
   scene.add(car);
+  console.info(`cars: Mazda2 parked at x ${x.toFixed(1)}, z ${z.toFixed(1)}`);
   const collider = { min: { x: x - 1.0, y: 0, z: z - 2.12 }, max: { x: x + 1.0, y: 1.5, z: z + 2.12 } };
   colliders.push(collider);
   const here = new THREE.Vector3();

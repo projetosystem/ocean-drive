@@ -306,6 +306,7 @@ const minimap = createMinimap({
     return { x: foot ? controls.pos.x : camera.position.x, z: foot ? controls.pos.y : camera.position.z, heading: Math.atan2(_mmDir.x, -_mmDir.z) };
   },
   getSaved: () => { const e = vehicles.saved; return e && e !== vehicles.currentEntry ? { x: e.v.x, z: e.v.z } : null; },
+  getPin: () => (cars.mazda ? { x: cars.mazda.position.x, z: cars.mazda.position.z } : null),
 });
 window.__minimap = minimap;
 // the car radio: Q (touch: the radio button) steps Off -> three stations -> Off while in a car
