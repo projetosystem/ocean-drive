@@ -88,6 +88,7 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
   const L = { x: 0, y: EYE, z: 0, fx: 0, fy: 0, fz: -1, ux: 0, uy: 1, uz: 0 };
   const waveCbs = new Set();
   const walk = { x: null, z: null, acc: 0, still: 0 };
+  let bassAmt = 0;
   let gullSource = null;   // BIRDS hook: calls come from real gulls
   let ducked = false;
 
@@ -129,6 +130,7 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
         applyListener(ctx, L, true);
         parts = buildScene(env, reduced);
         parts.gulls.setSource(gullSource);   // BIRDS hook
+        if (bassAmt) parts.radio.setBass(bassAmt);
         const now = ctx.currentTime;
         nextWave = now + 0.8; nextGull = now + rr(2, 6);
         if (!offline) timer = setInterval(tick, 50);
@@ -180,6 +182,9 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
       next() { if (!ctx) api.start(); return parts ? parts.radio.next() : -1; },
       set(i) { if (!ctx) api.start(); return parts ? parts.radio.set(i) : -1; },
       cabin(o) { parts?.radio.setCabin(o); },
+      // 0..1 sound-system size (vehicles/sound-system.js); kept for when the audio starts
+      setBass(b) { bassAmt = b; parts?.radio.setBass(b); },
+      get bass() { return parts?.radio.bass ?? bassAmt; },
       get station() { return parts?.radio.station ?? -1; },
       get name() { return parts?.radio.name ?? 'Off'; },
       get names() { return parts?.radio.names ?? ['Bossa at Dawn', 'Sunrise Synth', 'Clave Café']; },

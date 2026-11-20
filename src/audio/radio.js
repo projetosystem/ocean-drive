@@ -67,13 +67,18 @@ const pcOf = (n) => ((n % 12) + 12) % 12;
 // dest: where the radio gain feeds (default the non-spatial dry bus -> comp -> limiter -> volume)
 export function createRadio(env, { reduced = false, dest = env.dry } = {}) {
   const { ctx, B } = env;
-  let level = 0.35, inside = true, wind = 0, outAt = 0, open = false, speed = 0;
+  let level = 0.35, bass = 0, inside = true, wind = 0, outAt = 0, open = false, speed = 0;
   let tuned = -1, disposed = false;
 
   const cabIn = new GainNode(ctx, { gain: 1 });
   const windLp = bq(ctx, 'lowpass', 6500, 0.5);
   const out = new GainNode(ctx, { gain: level });
-  chain(cabIn, bq(ctx, 'highpass', 120, 0.6), bq(ctx, 'lowpass', 6000, 0.5),
+  // the stock speakers cut the lows (highpass 120); a sound system (vehicles/sound-system.js,
+  // setBass) opens the highpass down and boosts the sub bands
+  const hp = bq(ctx, 'highpass', 120, 0.6);
+  const subBoost = bq(ctx, 'peaking', 55, 0.9, 0);
+  const lowShelf = bq(ctx, 'lowshelf', 110, 0.7, 0);
+  chain(cabIn, hp, subBoost, lowShelf, bq(ctx, 'lowpass', 6000, 0.5),
     bq(ctx, 'peaking', 190, 1.2, 2), bq(ctx, 'peaking', 1150, 1.8, 3), windLp, out);
   out.connect(dest);
 
@@ -342,7 +347,7 @@ export function createRadio(env, { reduced = false, dest = env.dry } = {}) {
 
   function applyOut(tc) {
     const t = ctx.currentTime;
-    out.gain.setTargetAtTime(inside ? level * (1 - 0.3 * wind) : 0, t, tc);
+    out.gain.setTargetAtTime(inside ? level * (1 + 0.6 * bass) * (1 - 0.3 * wind) : 0, t, tc);
     windLp.frequency.setTargetAtTime(6500 - 4000 * wind, t, 0.25);
   }
 
@@ -394,6 +399,16 @@ export function createRadio(env, { reduced = false, dest = env.dry } = {}) {
         applyOut(inside ? 0.2 : 0.45); // ~1.5 s fade out
       } else if (Math.abs(w - wind) > 0.02) { wind = w; applyOut(0.3); }
     },
+    // 0..1: how much sound system the car carries (opens the lows, boosts the sub and the gain)
+    setBass(b) {
+      bass = clamp(b || 0, 0, 1);
+      const t = ctx.currentTime;
+      hp.frequency.setTargetAtTime(120 - 88 * bass, t, 0.1);
+      subBoost.gain.setTargetAtTime(14 * bass, t, 0.1);
+      lowShelf.gain.setTargetAtTime(6 * bass, t, 0.1);
+      applyOut(0.1);
+    },
+    get bass() { return bass; },
     setLevel(v) { level = clamp(v, 0, 1); applyOut(0.05); },
     dispose() {
       if (disposed) return;

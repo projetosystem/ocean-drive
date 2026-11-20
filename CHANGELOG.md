@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-20: Sound system
+
+- `src/vehicles/sound-system.js`: speaker boxes (subwoofer, trio, paredão, horn) on the
+  convertible's sprung body. **B** in the car opens an editor: add / remove / select boxes, move,
+  turn, tilt and resize (W/H/D); saved in localStorage. Their total volume drives the radio's bass
+  (`audio.radio.setBass`: opens the highpass, boosts 55 Hz and the low shelf) and the cones pump
+  with the music. Boxes are procedural; optional models in `public/models/sound/{trio,paredao,corneta}.glb`
+  replace them when present (not included: third-party originals).
+
 ## 2026-11-18: Mazda2
 
 - A 2015 Mazda2 hatchback (`public/models/mazda2.glb`) is parked at the nearest free bay of the

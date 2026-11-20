@@ -31,6 +31,7 @@ import { buildTraffic } from './world/traffic.js'; // TRAFFIC: cars cruising the
 import { createExitDrivers } from './world/exit-driver.js';
 import { createMinimap } from './ui/minimap.js';
 import { createRadioUi } from './ui/radio-ui.js';
+import { createSoundSystem } from './vehicles/sound-system.js';
 import { releaseGeometryAfterUpload, releaseCanvasesAfterUpload } from './renderer/memory.js';
 import { OPEN_WORLD } from './vehicles/specs.js';
 import { edgeDistance, softDistance, extentBounds, EDGE_SOFT } from './world/extent.js';
@@ -317,6 +318,9 @@ const radioNext = () => {
   radioUi.show(audio.radio.name, i);
 };
 addEventListener('keydown', (ev) => { if (ev.code === 'KeyQ' && !ev.repeat && !SHOT) radioNext(); });
+// the hero's speaker boxes: B in the convertible opens the editor (vehicles/sound-system.js)
+const soundSystem = createSoundSystem({ root: cars.drive?.root, audio, vehicles, shot: SHOT });
+window.__sound = soundSystem;
 window.__radio = { next: radioNext, get station() { return audio.radio.station; }, get name() { return audio.radio.name; }, ui: radioUi };
 // what the hero's rear-view mirror draws besides the cars (world/cars-glb.js)
 const MIRRORED = new Set(['placeholders', 'hotels', 'palms', 'street', 'ocean', 'parked-paint', 'parked-dark', 'parked-trim', 'parked-tyre']);
@@ -627,6 +631,7 @@ function frame(t) {
     if (!vehicles.riding) controls.update(dt);
     prof('walker');
     vehicles.update(dt);
+    soundSystem?.update(dt);
     mission?.update(dt);
     prof('vehicles');
     // on foot: the third-person camera (or a first-person one easing in), the body and its shadow
