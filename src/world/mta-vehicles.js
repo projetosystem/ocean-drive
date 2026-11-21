@@ -21,11 +21,11 @@ const FLIP_Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0
 export const FLEET_POOL = {
   hatch: ['carro-golf'],
   sedan: ['carro-lancer'],
-  wagon: [],
+  wagon: ['carro-lancer'],
   coupe: ['carro-silvia', 'carro-toyota-supra', 'carro-gtr', 'carro-shelby'],
   suv: ['carro-vapid', 'carro-suburban'],
-  crossover: [],
-  pickup: [],
+  crossover: ['carro-suburban'],   // (no model of their own: the nearest body, scaled to the kind's length)
+  pickup: ['carro-suburban'],
 };
 export const MOTO_FILE = 'moto-kawasaki';
 export const QUAD_FILE = 'quadriciclo';

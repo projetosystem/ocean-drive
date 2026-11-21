@@ -14,7 +14,7 @@ import { registerLodHook, LOD } from './lod.js';
 import { QUALITY } from '../quality.js';
 import { staticCull } from '../renderer/batched-cull.js';
 import { loadMazda2, buildMazda2 } from './mazda2.js';
-import { loadMta, createMtaFleet, buildMotoBike, buildMotoQuad, MOTO_FILE, QUAD_FILE, loaded as mtaLoaded } from './mta-vehicles.js';
+import { loadMta, createMtaFleet, FLEET_POOL, instantiate as mtaInstantiate, loaded as mtaLoaded } from './mta-vehicles.js';
 import {
   buildCars, buildParkedProcedural, carMovers, seat, groundReflect, clampRadiance,
   CAR_MAX_RADIANCE, shared, blockedBay,
@@ -43,7 +43,9 @@ export function preloadCars() {
   // from modelling ones
   const raw = new URLSearchParams(location.search).get('hero') === 'raw';
   const hero = raw ? loader.loadAsync('/blender/_raw/convertible.glb').catch(() => null) : get('convertible');
-  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2()]);
+  // (every MTA body the parked fleet / traffic / driving draw: in before the traffic is built)
+  const mtaNames = [...new Set(Object.values(FLEET_POOL).flat())];
+  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2(), ...mtaNames.map((n) => loadMta(n))]);
   return pending;
 }
 
@@ -1220,7 +1222,7 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
   scene.add(warm);
   let warmFrames = 0;
   return {
-    kinds, lens, seatZ, classics: pool, paints: PAINTS,
+    kinds, lens, seatZ, classics: pool, paints: PAINTS, sunShadow,
     lod1At: LOD1_AT.parked,
     // one instance of `kind` with its own paint / lamp materials (world/traffic.js pools them)
     makeModern(kind) {
@@ -1468,6 +1470,28 @@ export async function buildCarsGlb(scene, renderer) {
     mtaFleet.preload();
     const makeDrivable0 = kit.makeDrivable.bind(kit);
     kit.makeDrivable = (kind, color) => mtaFleet.makeView(kind, color) ?? makeDrivable0(kind, color);
+    // the traffic's cars: the MTA bodies too, in the instance shape world/traffic.js drives
+    const makeModern0 = kit.makeModern.bind(kit);
+    const turn = {};
+    const never = { get visible() { return true; }, set visible(_v) {} };   // (one detailed level at every distance)
+    kit.makeModern = (kind) => {
+      const names = FLEET_POOL[kind] ?? [];
+      const name = names.length ? names[(turn[kind] = (turn[kind] ?? -1) + 1) % names.length] : null;
+      const gltf = name && mtaLoaded.get(name);
+      if (!gltf) return makeModern0(kind);
+      const I = mtaInstantiate(gltf, { length: kit.lens[kind] ?? 4.8, env, shadows: false });
+      const root = skipWhenHidden(new THREE.Group());
+      root.add(I.root);
+      const blob = blobMesh(2.25, I.len + 0.6);
+      const sun = kit.sunShadow();
+      root.add(blob, sun);
+      root.visible = false;
+      scene.add(root);
+      probe.hide.push(root);
+      const w = I.wheels;
+      return { root, levels: [never, never], wheels: [[w.FL, w.FR, w.RL, w.RR].filter(Boolean)], wheelR: I.wheelR, len: I.len,
+        paint: I.paint, tail: null, brake3: null, rig: {}, sun, halos: null, kind, mta: true };
+    };
   }
   return {
     mta: { bike: () => null, atv: () => null },   // (the MTA moto / quad were dropped: generic bikes)

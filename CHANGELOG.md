@@ -14,6 +14,8 @@
 
 ## 2026-11-21: MTA vehicles
 
+- The road traffic now draws the MTA bodies too (wagon / crossover / pickup use the nearest model, scaled to the kind's length); no brake lamps or drivers on them yet.
+
 - `public/models/mta/*.glb`: converted from the MTA pack
   (github.com/projetosystem/mta) with `dff2glb` (DFF + TXD -> GLB, 4 separate wheel nodes,
   body-colour material `paint`). **Third-party GTA/MTA models: the original authors' terms
