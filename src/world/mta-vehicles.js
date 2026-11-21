@@ -80,7 +80,7 @@ export function instantiate(gltf, { color = 0xb9bcbf, length = null, env = null,
     }
     o.material = m;
     o.castShadow = shadows && m !== glass;
-    o.receiveShadow = true;
+    o.receiveShadow = false;   // (self-shadowing on these low-poly bodies drew stair-step acne across the paint)
     if (m === glass) o.renderOrder = 2;
   });
   const wheels = {};
