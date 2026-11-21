@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-21: MTA vehicles
+
+- `public/models/mta/*.glb`: 17 cars, 3 motorbikes and a quad converted from the MTA pack
+  (github.com/projetosystem/mta) with `dff2glb` (DFF + TXD -> GLB, 4 separate wheel nodes,
+  body-colour material `paint`). **Third-party GTA/MTA models: the original authors' terms
+  apply; check them before publishing the game.**
+- `src/world/mta-vehicles.js`: the parked fleet is drawn from them near the viewer (each body
+  kind picks a model by paint) and the cars the player drives are made from the same files;
+  the traffic keeps the generic bodies. The ATV is the quad (`quadriciclo`) and the bicycle
+  became the Kawasaki motorbike (`MOTO_SPEC`, a motor's pace; no engine sound yet).
+
 ## 2026-11-20: Sound system
 
 - `src/vehicles/sound-system.js`: speaker boxes (subwoofer, trio, paredão, horn) on the

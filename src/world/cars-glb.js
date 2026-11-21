@@ -14,6 +14,7 @@ import { registerLodHook, LOD } from './lod.js';
 import { QUALITY } from '../quality.js';
 import { staticCull } from '../renderer/batched-cull.js';
 import { loadMazda2, buildMazda2 } from './mazda2.js';
+import { loadMta, createMtaFleet, buildMotoBike, buildMotoQuad, MOTO_FILE, QUAD_FILE, loaded as mtaLoaded } from './mta-vehicles.js';
 import {
   buildCars, buildParkedProcedural, carMovers, seat, groundReflect, clampRadiance,
   CAR_MAX_RADIANCE, shared, blockedBay,
@@ -42,7 +43,7 @@ export function preloadCars() {
   // from modelling ones
   const raw = new URLSearchParams(location.search).get('hero') === 'raw';
   const hero = raw ? loader.loadAsync('/blender/_raw/convertible.glb').catch(() => null) : get('convertible');
-  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2()]);
+  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2(), loadMta(MOTO_FILE), loadMta(QUAD_FILE)]);
   return pending;
 }
 
@@ -1017,7 +1018,7 @@ function buildFleet(scene, gltf, M) {
   const update = (p) => {
     let changed = false;
     for (const c of cars) {
-      if (c.taken) continue;
+      if (c.taken || c.override) continue;
       const d2 = (c.x - p.x) ** 2 + (c.z - p.z) ** 2;
       const vis = d2 < (c.far2 ?? far2), lod = d2 < near2 ? 0 : 1;
       if (vis === c.vis && lod === c.lod) continue;
@@ -1397,7 +1398,7 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
 export async function buildCarsGlb(scene, renderer) {
   // ?cars=procedural: the old procedural set (comparison / fallback check)
   if (new URLSearchParams(location.search).get('cars') === 'procedural') return buildCars(scene);
-  const [heroGltf, parkedGltf, vinylNor, carpetNor, mazdaGltf] = await preloadCars();
+  const [heroGltf, parkedGltf, vinylNor, carpetNor, mazdaGltf, motoGltf, quadGltf] = await preloadCars();
   if (!heroGltf) return buildCars(scene);
   const probe = createProbe(renderer, scene);
   probe.capture(CAR.z, true);
@@ -1460,7 +1461,16 @@ export async function buildCarsGlb(scene, renderer) {
   const tmp = new THREE.Vector3();
   const kit = trafficKit(scene, parkedGltf, M, env, pool, probe);
   let heroDriven = false, heroChase = false;
+  // the MTA models (world/mta-vehicles.js): the parked fleet and the cars the player drives
+  // come from them once their files are in; the traffic keeps the generic bodies
+  const mtaFleet = fleet && kit && !new URLSearchParams(location.search).has('shot') ? createMtaFleet(scene, fleet, { env, seat }) : null;
+  if (mtaFleet) {
+    mtaFleet.preload();
+    const makeDrivable0 = kit.makeDrivable.bind(kit);
+    kit.makeDrivable = (kind, color) => mtaFleet.makeView(kind, color) ?? makeDrivable0(kind, color);
+  }
   return {
+    mta: { bike: () => (motoGltf ? buildMotoBike(motoGltf, env) : null), atv: () => (quadGltf ? buildMotoQuad(quadGltf, env) : null) },
     hero: hero.car, mazda: mazda?.car ?? null, mover: pool[0].car, movers: pool.map((m) => m.car), colliders, fleet, probe, glb: true,
     parkedClassics: parkedClassics.map((m) => m.car),
     traffic: kit,
@@ -1499,6 +1509,7 @@ export async function buildCarsGlb(scene, renderer) {
       if (!camera) return;
       kit.tick();
       mazda?.update(camera);
+      mtaFleet?.update(camera.position);
       probe.follow(camera.position);
       const inside = heroDriven && !heroChase;
       M.screen.userData.uInside.value = inside ? 1 : 0;

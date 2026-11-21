@@ -163,6 +163,17 @@ const heroOpen = (() => {
   };
 })();
 
+// the MTA motorbike that replaces the bicycle (world/mta-vehicles.js): the bike's sim with a
+// motor's pace
+export const MOTO_SPEC = {
+  ...SPECS.bike, body: 'bike', open: true, surfTable: true, xMin: -Infinity, mass: 200, length: 1.94, width: 0.8,
+  wheelbase: 1.55, wheelR: 0.34, wheels: [[0, -0.775], [0, 0.775]], circles: [[-0.6, 0.34], [0.55, 0.34]],
+  vmax: { pavement: [14.5, 19.5], grass: [5, 7], wetsand: [9, 12], sand: [3.5, 5] },
+  roll: { pavement: 0.05, grass: 0.8, wetsand: 0.4, sand: 1.4 },
+  accel: 3.4, accelHard: 4.6, brake: 7, revAccel: 1.5, revMax: 1.5, steerMax: 0.5, steerV: 5, steerRate: 7,
+  grip: { hard: 13, soft: 8 }, eye: [0, 1.4, 0.2],
+};
+
 export const OPEN_SPECS = {
   bike: { ...SPECS.bike, body: 'bike', open: true, surfTable: true, xMin: -Infinity, mass: 95, length: 1.8, width: 0.6 },
   atv: { ...SPECS.atv, body: 'atv', open: true, surfTable: true, xMin: -Infinity, intake: 0.40, maxDepth: 0.60, mass: 380, length: 2.0, width: 1.2, offroad: 1, sinkCap: 0.05 },

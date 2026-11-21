@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { EYE_HEIGHT, TOWER, CROSS, crossStreetAt } from '../world/layout.js';
 import { QUALITY } from '../quality.js';
 import { createVehicle, stepVehicle, blockedAt, buildGrid, settle, dismountSpots, canRestart, surfaceAt } from './sim.js';
-import { OPEN_WORLD, OPEN_SPECS } from './specs.js';
+import { OPEN_WORLD, OPEN_SPECS, MOTO_SPEC } from './specs.js';
 import { edgeSteer, extentBounds, insideWorld } from '../world/extent.js';
 import { buildBike, buildAtv } from './models.js';
 import { createSkids } from './skids.js';
@@ -61,7 +61,7 @@ html.touch #ride-prompt { display: none; }
 export function createVehicles(scene, {
   walker, camera, beach, staticBoxes, staticCircles, dynamicCircles = [], audio, shot = false, renderer,
   requestShadow = () => {}, getTouch = () => null, car = null, movers = [],
-  fleet = null, kit = null, seatPlayer = null, traffic = null, onDriverOut = null, props = null,
+  fleet = null, kit = null, mta = null, seatPlayer = null, traffic = null, onDriverOut = null, props = null,
   // on foot: the view (player/foot-camera.js), C / the camera button there, getting in / out
   footView = () => 'fp', onFootToggle = null, onMount = null, onDismount = null,
 }) {
@@ -78,13 +78,16 @@ export function createVehicles(scene, {
   };
   const list = [];
   for (const kind of ['bike', 'atv']) {
-    const m = kind === 'bike' ? buildBike() : buildAtv();
+    // (the MTA motorbike / quad when their models are in: world/mta-vehicles.js)
+    const mm = OPEN_WORLD && !shot ? mta?.[kind]?.() ?? null : null;
+    const m = mm ?? (kind === 'bike' ? buildBike() : buildAtv());
+    const kspec = mm && kind === 'bike' ? MOTO_SPEC : kind;
     const pose = { ...PARKED[kind] };
-    let v = createVehicle(kind, pose, world);
+    let v = createVehicle(kspec, pose, world);
     // keep the parking spot clear of benches, palms and props (deterministic nudge)
     for (let k = 0; k < 40 && blockedAt(v, v.x, v.z, v.yaw, world); k++) {
       const a = k * 2.4, r = 0.3 + k * 0.08;
-      v = createVehicle(kind, { ...pose, x: pose.x + Math.cos(a) * r, z: pose.z + Math.sin(a) * r }, world);
+      v = createVehicle(kspec, { ...pose, x: pose.x + Math.cos(a) * r, z: pose.z + Math.sin(a) * r }, world);
     }
     v.parked = true;
     if (kind === 'bike') { v.lean = -0.13; v.roll = 0.13; }
@@ -152,7 +155,7 @@ export function createVehicles(scene, {
     m.tilt.rotation.set(v.pitch, 0, v.roll);
     if (e.kind === 'bike') {
       m.steer.rotation.y = -v.steer * 1.15;
-      m.wheelF.rotation.x = m.wheelR.rotation.x = -v.wheelRot;
+      m.wheelF.rotation.x = m.wheelR.rotation.x = -v.wheelRot * (m.spin ?? 1);
       m.crank.rotation.x = -v.crank;
       for (const p of m.pedals) p.rotation.x = v.crank;
       const k = e.kick;
@@ -165,7 +168,7 @@ export function createVehicles(scene, {
         const y = ((T - by + w.z * sp) / cp - w.x * sr) / cr;
         w.hold.position.y = THREE.MathUtils.clamp(y, R - 0.1, R + 0.16);
         if (i < 2) w.hold.rotation.y = -v.steer;
-        w.mesh.rotation.x = -v.wheelRot;
+        w.mesh.rotation.x = -v.wheelRot * (m.spin ?? 1);
       });
       const u = m.mat.userData.u, on = v.ridden;
       u.uLights.value = on ? 1 : 0;

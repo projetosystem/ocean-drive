@@ -255,7 +255,7 @@ const vehicles = createVehicles(scene, {
   getTouch: () => touch,
   car: cars.drive ?? null,
   // open world: the parked fleet is drivable (enter at a door), the player's body seated in it
-  fleet: cars.fleet ?? null, kit: cars.traffic ?? null, traffic,
+  fleet: cars.fleet ?? null, kit: cars.traffic ?? null, mta: cars.mta ?? null, traffic,
   seatPlayer: (view) => people.seatPlayer?.(view),
 });
 walkWorld.circles.push(...vehicles.colliders);
