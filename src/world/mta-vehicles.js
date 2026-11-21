@@ -20,17 +20,18 @@ const FLIP_Y = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0
 // public/models/mta; the heavy ones, i8 and saveiro-cross, are for close-ups)
 export const FLEET_POOL = {
   hatch: ['carro-golf'],
-  sedan: ['carro-lancer', 'carro-slame'],
-  wagon: ['carro-sutain'],
+  sedan: ['carro-lancer'],
+  wagon: [],
   coupe: ['carro-silvia', 'carro-toyota-supra', 'carro-gtr', 'carro-shelby'],
-  suv: ['carro-vapid', 'carro-suburban', 'carro-mayhem'],
-  crossover: ['carro-karin', 'carro-ford-explorer'],
-  pickup: ['carro-hilux', 'carro-gang-burrito'],
+  suv: ['carro-vapid', 'carro-suburban'],
+  crossover: [],
+  pickup: [],
 };
 export const MOTO_FILE = 'moto-kawasaki';
 export const QUAD_FILE = 'quadriciclo';
 export const modelFor = (kind, color = 0) => {
-  const pool = FLEET_POOL[kind] ?? FLEET_POOL.sedan;
+  const pool = FLEET_POOL[kind];
+  if (!pool || !pool.length) return null;   // no MTA model for this kind: the generic body stays
   return pool[Math.abs(color | 0) % pool.length];
 };
 
@@ -223,8 +224,8 @@ export function createMtaFleet(scene, fleet, { env, seat, near = 62 }) {
   const free = [];                                 // pool per model name
   const take = (c) => {
     const name = modelFor(c.kind, c.color);
-    const gltf = loaded.get(name);
-    if (!gltf) { loadMta(name); return null; }
+    const gltf = name && loaded.get(name);
+    if (!gltf) { if (name) loadMta(name); return null; }
     const pool = free.filter((f) => f.name === name);
     let I = pool[0];
     if (I) free.splice(free.indexOf(I), 1);
@@ -270,8 +271,8 @@ export function createMtaFleet(scene, fleet, { env, seat, near = 62 }) {
     },
     makeView(kind, color) {
       const name = modelFor(kind, color);
-      const gltf = loaded.get(name);
-      if (!gltf) { loadMta(name); return null; }
+      const gltf = name && loaded.get(name);
+      if (!gltf) { if (name) loadMta(name); return null; }
       const I = instantiate(gltf, { color: color ?? 0xb9bcbf, length: lengthOf(kind), env });
       return carView(scene, I, kind);
     },

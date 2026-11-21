@@ -43,7 +43,7 @@ export function preloadCars() {
   // from modelling ones
   const raw = new URLSearchParams(location.search).get('hero') === 'raw';
   const hero = raw ? loader.loadAsync('/blender/_raw/convertible.glb').catch(() => null) : get('convertible');
-  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2(), loadMta(MOTO_FILE), loadMta(QUAD_FILE)]);
+  pending = Promise.all([hero, get('parked'), map('vinyl_nor'), map('carpet_nor'), loadMazda2()]);
   return pending;
 }
 
@@ -1398,7 +1398,7 @@ function trafficKit(scene, gltf, M, env, pool, probe) {
 export async function buildCarsGlb(scene, renderer) {
   // ?cars=procedural: the old procedural set (comparison / fallback check)
   if (new URLSearchParams(location.search).get('cars') === 'procedural') return buildCars(scene);
-  const [heroGltf, parkedGltf, vinylNor, carpetNor, mazdaGltf, motoGltf, quadGltf] = await preloadCars();
+  const [heroGltf, parkedGltf, vinylNor, carpetNor, mazdaGltf] = await preloadCars();
   if (!heroGltf) return buildCars(scene);
   const probe = createProbe(renderer, scene);
   probe.capture(CAR.z, true);
@@ -1470,7 +1470,7 @@ export async function buildCarsGlb(scene, renderer) {
     kit.makeDrivable = (kind, color) => mtaFleet.makeView(kind, color) ?? makeDrivable0(kind, color);
   }
   return {
-    mta: { bike: () => (motoGltf ? buildMotoBike(motoGltf, env) : null), atv: () => (quadGltf ? buildMotoQuad(quadGltf, env) : null) },
+    mta: { bike: () => null, atv: () => null },   // (the MTA moto / quad were dropped: generic bikes)
     hero: hero.car, mazda: mazda?.car ?? null, mover: pool[0].car, movers: pool.map((m) => m.car), colliders, fleet, probe, glb: true,
     parkedClassics: parkedClassics.map((m) => m.car),
     traffic: kit,

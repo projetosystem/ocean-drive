@@ -2,7 +2,7 @@
 
 ## 2026-11-21: MTA maps
 
-- `public/models/mta-maps/<id>/*.glb` (+ `index.json`): 19 circuits / touge roads converted from
+- `public/models/mta-maps/<id>/*.glb` (+ `index.json`): 5 circuits / touge roads (Touge Akina, Nikko, Okaru, Tsukuba, Meihan Circuit) converted from
   the same MTA pack (textures at 512 px, 48 MB in all; same licence note as the vehicles).
 - `src/world/mta-maps.js`: **P** opens a teleport list; a map loads on first use, the district
   is hidden and the walker walks on a height grid rasterised from the map's own triangles
@@ -11,14 +11,14 @@
 
 ## 2026-11-21: MTA vehicles
 
-- `public/models/mta/*.glb`: 17 cars, 3 motorbikes and a quad converted from the MTA pack
+- `public/models/mta/*.glb`: converted from the MTA pack
   (github.com/projetosystem/mta) with `dff2glb` (DFF + TXD -> GLB, 4 separate wheel nodes,
   body-colour material `paint`). **Third-party GTA/MTA models: the original authors' terms
   apply; check them before publishing the game.**
 - `src/world/mta-vehicles.js`: the parked fleet is drawn from them near the viewer (each body
   kind picks a model by paint) and the cars the player drives are made from the same files;
-  the traffic keeps the generic bodies. The ATV is the quad (`quadriciclo`) and the bicycle
-  became the Kawasaki motorbike (`MOTO_SPEC`, a motor's pace; no engine sound yet).
+  the traffic keeps the generic bodies. Kinds without a model (wagon, crossover, pickup) and the
+  bikes / ATV keep the generic ones: the armoured/odd MTA models, the Kawasaki and the quad were removed.
 
 ## 2026-11-20: Sound system
 
