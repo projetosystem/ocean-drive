@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-21: MTA maps
+
+- `public/models/mta-maps/<id>/*.glb` (+ `index.json`): 19 circuits / touge roads converted from
+  the same MTA pack (textures at 512 px, 48 MB in all; same licence note as the vehicles).
+- `src/world/mta-maps.js`: **P** opens a teleport list; a map loads on first use, the district
+  is hidden and the walker walks on a height grid rasterised from the map's own triangles
+  (spawn on a road, facing along it). P again, the first entry, or a number key goes back to
+  Ocean Drive. On foot only for now: the cars still drive on the district's world.
+
 ## 2026-11-21: MTA vehicles
 
 - `public/models/mta/*.glb`: 17 cars, 3 motorbikes and a quad converted from the MTA pack

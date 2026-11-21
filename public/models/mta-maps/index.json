@@ -1,0 +1,187 @@
+[
+ {
+  "id": "drift2",
+  "name": "Drift 2",
+  "files": [
+   "drift-track.glb"
+  ],
+  "mb": 1.2
+ },
+ {
+  "id": "east-minami-circuit",
+  "name": "East Minami Circuit",
+  "files": [
+   "1.glb"
+  ],
+  "mb": 0.2
+ },
+ {
+  "id": "ebisu-west",
+  "name": "Ebisu West",
+  "files": [
+   "ebisuw1.glb",
+   "ebisuw2.glb",
+   "ebisuw3.glb",
+   "ebisuw4.glb"
+  ],
+  "mb": 2.1
+ },
+ {
+  "id": "fantasy-hill",
+  "name": "Fantasy Hill",
+  "files": [
+   "fantasy1.glb",
+   "fantasy2.glb",
+   "fantasy3.glb",
+   "fantasy4.glb",
+   "fantasy5.glb"
+  ],
+  "mb": 4.6
+ },
+ {
+  "id": "garage",
+  "name": "Garage",
+  "files": [
+   "1.glb"
+  ],
+  "mb": 0.2
+ },
+ {
+  "id": "meihancircuit",
+  "name": "Meihan Circuit",
+  "files": [
+   "meihancircuit.glb"
+  ],
+  "mb": 3.5
+ },
+ {
+  "id": "nakayubi",
+  "name": "Nakayubi",
+  "files": [
+   "tougeteam.glb"
+  ],
+  "mb": 1.5
+ },
+ {
+  "id": "redring",
+  "name": "Red Ring",
+  "files": [
+   "redring1.glb",
+   "redring2.glb",
+   "redring3.glb",
+   "redring4.glb",
+   "redring5.glb",
+   "redring6.glb",
+   "redring7.glb",
+   "redring8.glb",
+   "redring9.glb"
+  ],
+  "mb": 3.9
+ },
+ {
+  "id": "tougeakina",
+  "name": "Touge Akina",
+  "files": [
+   "akina1.glb",
+   "akina2.glb",
+   "akina3.glb",
+   "akina4.glb",
+   "akina5.glb"
+  ],
+  "mb": 9.4
+ },
+ {
+  "id": "tougebihoku",
+  "name": "Touge Bihoku",
+  "files": [
+   "bihoku1.glb",
+   "bihoku2.glb",
+   "bihokutree.glb"
+  ],
+  "mb": 1.8
+ },
+ {
+  "id": "tougedrifttrack",
+  "name": "Touge Drift Track",
+  "files": [
+   "tougeteam.glb"
+  ],
+  "mb": 0.6
+ },
+ {
+  "id": "tougeebisusoutch",
+  "name": "Touge Ebisu South",
+  "files": [
+   "ebisuland1.glb",
+   "ebisuland2.glb",
+   "ebisuland3.glb"
+  ],
+  "mb": 2.0
+ },
+ {
+  "id": "tougegokart",
+  "name": "Touge Go-Kart",
+  "files": [
+   "drift1.glb",
+   "drift2.glb"
+  ],
+  "mb": 1.0
+ },
+ {
+  "id": "tougenikko",
+  "name": "Touge Nikko",
+  "files": [
+   "nikkocircuit.glb"
+  ],
+  "mb": 2.7
+ },
+ {
+  "id": "tougeokaru",
+  "name": "Touge Okaru",
+  "files": [
+   "okaru.glb",
+   "okaru1.glb",
+   "okaru2.glb",
+   "okaru3.glb",
+   "okaru4.glb"
+  ],
+  "mb": 7.9
+ },
+ {
+  "id": "tougeprojecttouge",
+  "name": "Project Touge",
+  "files": [
+   "projectouge.glb"
+  ],
+  "mb": 0.3
+ },
+ {
+  "id": "tougesekia",
+  "name": "Touge Sekia",
+  "files": [
+   "island.glb"
+  ],
+  "mb": 1.5
+ },
+ {
+  "id": "tsukuba",
+  "name": "Tsukuba",
+  "files": [
+   "tsukubac1.glb",
+   "tsukubac2.glb",
+   "tsukubac3.glb",
+   "tsukubac4.glb",
+   "tsukubac5.glb"
+  ],
+  "mb": 1.9
+ },
+ {
+  "id": "ultranitrotrack",
+  "name": "Ultra Nitro Track",
+  "files": [
+   "nitroultra1.glb",
+   "nitroultra2.glb"
+  ],
+  "mb": 1.3
+ }
+]

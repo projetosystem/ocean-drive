@@ -32,6 +32,7 @@ import { createExitDrivers } from './world/exit-driver.js';
 import { createMinimap } from './ui/minimap.js';
 import { createRadioUi } from './ui/radio-ui.js';
 import { createSoundSystem } from './vehicles/sound-system.js';
+import { createMapPortal } from './world/mta-maps.js';
 import { releaseGeometryAfterUpload, releaseCanvasesAfterUpload } from './renderer/memory.js';
 import { OPEN_WORLD } from './vehicles/specs.js';
 import { edgeDistance, softDistance, extentBounds, EDGE_SOFT } from './world/extent.js';
@@ -297,6 +298,9 @@ window.__avatar = avatar;
 // FASTTRAVEL: 1-0 (touch: the pin button) jump to ten places; on foot the body and the camera snap there
 const fastTravel = createFastTravel({ walker: controls, vehicles, beach, hotels, shot: SHOT, onArrive: ({ riding }) => { if (!riding) { avatar?.exit(null, false); footCam.snap(); footCam.blendFrom(camera, 0.01); } requestShadow(); } });
 window.__fastTravel = fastTravel;
+// the MTA maps, each a place of its own: P opens the teleport list (world/mta-maps.js)
+const mapPortal = createMapPortal({ scene, camera, controls, vehicles, requestShadow, shot: SHOT });
+window.__maps = mapPortal;
 // the art-deco minimap (N hides it, Shift+N north up): you and the saved car
 const _mmDir = new THREE.Vector3();
 const minimap = createMinimap({
