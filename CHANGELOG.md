@@ -2,6 +2,9 @@
 
 ## 2026-11-21: MTA maps
 
+- Map materials: GTA's grey tints no longer halve the textures (dark slopes/trees), foliage is cut-out
+  instead of blended, a floor of emissive light on shaded slopes.
+
 - `public/models/mta-maps/<id>/*.glb` (+ `index.json`): 5 circuits / touge roads (Touge Akina, Nikko, Okaru, Tsukuba, Meihan Circuit) converted from
   the same MTA pack (textures at 512 px, 48 MB in all; same licence note as the vehicles).
 - `src/world/mta-maps.js`: **P** opens a teleport list; a map loads on first use, the district

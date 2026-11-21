@@ -119,6 +119,14 @@ export function createMapPortal({ scene, camera, controls, vehicles, requestShad
         if (m.map) m.map.anisotropy = 4;
         m.roughness = 0.9; m.metalness = 0;
         m.side = THREE.DoubleSide;
+        if (m.map) {
+          m.color.setScalar(1);   // (the GTA material tints, 0.42-0.5 grey, halve the texture: slopes and trees came out black)
+          // foliage / fences: cut-outs, not blended planes (blending sorted wrongly and left dark bars)
+          if (m.transparent || m.alphaTest > 0) { m.transparent = false; m.alphaTest = 0.5; m.depthWrite = true; }
+          // a floor of light so slopes turned from the sun are not black
+          m.emissive = new THREE.Color(0x5a5a5a); m.emissiveMap = m.map;
+        }
+        m.needsUpdate = true;
       });
       group.add(g.scene);
     }
