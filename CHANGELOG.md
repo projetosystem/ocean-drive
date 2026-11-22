@@ -12,6 +12,13 @@
   (spawn on a road, facing along it). P again, the first entry, or a number key goes back to
   Ocean Drive. On foot only for now: the cars still drive on the district's world.
 
+## 2026-11-22: F1 panel and MTA skins
+
+- F1 opens a panel: FPS readout, and the skin of the player and of the NPCs (original, one MTA skin, or a
+  mix of all 20). `public/models/mta-skins/*.glb` are static meshes; `world/mta-skins.js` fits each one
+  to a person's own skeleton at load (scaled to the body, vertices weighted to the nearest bone
+  segments), so every existing animation moves it. Arms can stretch a little in wide poses.
+
 ## 2026-11-21: MTA vehicles
 
 - Fixes: zero-length normals in the converted files repaired at load (black screen next to the Golf); the seat anchor mirrored to the steering-wheel side; a traffic car you take keeps its model; the traffic cars have drivers.

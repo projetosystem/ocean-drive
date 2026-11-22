@@ -32,6 +32,7 @@ import { createExitDrivers } from './world/exit-driver.js';
 import { createMinimap } from './ui/minimap.js';
 import { createRadioUi } from './ui/radio-ui.js';
 import { createSoundSystem } from './vehicles/sound-system.js';
+import { createF1Panel } from './ui/f1-panel.js';
 import { createMapPortal } from './world/mta-maps.js';
 import { releaseGeometryAfterUpload, releaseCanvasesAfterUpload } from './renderer/memory.js';
 import { OPEN_WORLD } from './vehicles/specs.js';
@@ -325,6 +326,8 @@ addEventListener('keydown', (ev) => { if (ev.code === 'KeyQ' && !ev.repeat && !S
 // the hero's speaker boxes: B in the convertible opens the editor (vehicles/sound-system.js)
 const soundSystem = createSoundSystem({ root: cars.drive?.root, audio, vehicles, shot: SHOT });
 window.__sound = soundSystem;
+// F1: FPS readout, MTA skins for the player and the NPCs
+window.__f1 = createF1Panel({ hud: document.getElementById('hud'), bodies: () => { const b = people?.bodies?.() ?? { npc: [], player: [] }; if (avatar?.P) b.player.push(avatar.P); return b; }, shot: SHOT });
 window.__radio = { next: radioNext, get station() { return audio.radio.station; }, get name() { return audio.radio.name; }, ui: radioUi };
 // what the hero's rear-view mirror draws besides the cars (world/cars-glb.js)
 const MIRRORED = new Set(['placeholders', 'hotels', 'palms', 'street', 'ocean', 'parked-paint', 'parked-dark', 'parked-trim', 'parked-tyre']);

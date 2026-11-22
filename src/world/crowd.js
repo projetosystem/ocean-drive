@@ -1014,6 +1014,8 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     people: Object.fromEntries(agents.map((a) => [a.name, a])),
     setVehicles(v) { vehicles = v; },
     get playerDriver() { return playerDriver; },
+    // every body, for the F1 skin panel: { npc: [P], player: [P] }
+    bodies() { return { npc: [...agents.map((a) => a.P), ...drivers], player: [playerDriver, modernDriver?.P].filter(Boolean) }; },
     attachDrivers,
     seatPlayer,
     // pedestrians for the traffic sim (right of way on the crosswalks)
