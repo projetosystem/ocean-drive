@@ -14,6 +14,8 @@
 
 ## 2026-11-21: MTA vehicles
 
+- Fixes: zero-length normals in the converted files repaired at load (black screen next to the Golf); the seat anchor mirrored to the steering-wheel side; a traffic car you take keeps its model; the traffic cars have drivers.
+
 - The road traffic now draws the MTA bodies too (wagon / crossover / pickup use the nearest model, scaled to the kind's length); no brake lamps or drivers on them yet.
 
 - `public/models/mta/*.glb`: converted from the MTA pack

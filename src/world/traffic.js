@@ -209,7 +209,7 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
       const s = slots.find((q) => q.car === c);
       const I = s?.inst;
       if (!I || I.classic || c.hidden || c.v > 0.3) return null;
-      const out = { kind: c.model, color: c.color, x: c.x, z: c.z, yaw: Math.atan2(0, c.dir) - Math.PI, len: c.len, driver: null };
+      const out = { kind: c.model, mta: I.mtaName ?? null, color: c.color, x: c.x, z: c.z, yaw: Math.atan2(0, c.dir) - Math.PI, len: c.len, driver: null };
       const d = I.driver;
       if (d?.P) {
         const P = d.P;

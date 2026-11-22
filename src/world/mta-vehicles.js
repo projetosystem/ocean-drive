@@ -37,11 +37,29 @@ export const modelFor = (kind, color = 0) => {
 
 const cache = new Map();   // name -> Promise<gltf | null>
 export const loaded = new Map();   // name -> gltf (once it is in)
+// a few vertices of the converted files carry zero-length normals: normalised in the shader that
+// is NaN, and one NaN pixel in the HDR buffer smears through the bloom blur into a black screen
+// (the Golf, up close). Those normals get the face-up direction.
+function fixNormals(g) {
+  const seen = new Set();
+  g.scene.traverse((o) => {
+    const a = o.isMesh && o.geometry.attributes.normal;
+    if (!a || seen.has(o.geometry)) return;
+    seen.add(o.geometry);
+    for (let i = 0; i < a.count; i++) {
+      const x = a.getX(i), y = a.getY(i), z = a.getZ(i);
+      const l = x * x + y * y + z * z;
+      if (!(l > 0.25) || !Number.isFinite(l)) a.setXYZ(i, 0, 1, 0);
+    }
+    a.needsUpdate = true;
+  });
+}
+
 export function loadMta(name) {
   if (new URLSearchParams(location.search).has('shot')) return Promise.resolve(null);
   if (!cache.has(name)) {
     cache.set(name, new GLTFLoader().loadAsync(`${BASE}${name}.glb`)
-      .then((g) => { loaded.set(name, g); return g; })
+      .then((g) => { fixNormals(g); loaded.set(name, g); return g; })
       .catch((e) => { console.warn('mta: ' + name + ' failed', e); return null; }));
   }
   return cache.get(name);
@@ -95,14 +113,21 @@ export function instantiate(gltf, { color = 0xb9bcbf, length = null, env = null,
 }
 
 const tmpA = new THREE.Vector3();
+export function seatAnchor(I) {
+  const d = I.driver ? I.driver.position : tmpA.set(0.4, 0.5, 0);
+  return new THREE.Vector3(Math.abs(d.x), d.y, d.z);
+}
 // the player's view of a car instance (the interface of cars-glb.js makeDrivable)
 export function carView(scene, I, kind) {
   const eye = new THREE.Object3D();
   const pelvis = new THREE.Object3D();
-  const d = I.driver ? I.driver.position : tmpA.set(0.4, 0.5, 0);
-  // (the model's driver anchor is the hips; the eye 0.62 m above and a little back)
-  pelvis.position.copy(d).multiplyScalar(I.scale);
-  eye.position.set(pelvis.position.x, pelvis.position.y + 0.62, pelvis.position.z - 0.05);
+  // (the model's driver anchor is the hips, in the model's own scale; the converted files put it on
+  // the right, the steering wheel is on the left: the seat is mirrored. The eye 0.62 m above and a
+  // little back; the anchor un-scaled so the seated body keeps its size)
+  const sd = seatAnchor(I);
+  pelvis.position.copy(sd).multiplyScalar(1);
+  pelvis.scale.setScalar(1 / I.scale);
+  eye.position.set(sd.x, sd.y + 0.62 / I.scale, sd.z - 0.05 / I.scale);
   I.model.add(pelvis, eye);
   const rig = { pelvis, eye, gripL: null, gripR: null, wheel: null, wheelAngle: 0, t: 0, body: null, update: null, chase: false };
   const wheels = [I.wheels.FL, I.wheels.FR, I.wheels.RL, I.wheels.RR];
@@ -269,11 +294,12 @@ export function createMtaFleet(scene, fleet, { env, seat, near = 62 }) {
         hideBatch(c, true);
       }
     },
-    makeView(kind, color) {
-      const name = modelFor(kind, color);
+    makeView(kind, color, model = null) {
+      const name = model ?? modelFor(kind, color);
       const gltf = name && loaded.get(name);
       if (!gltf) { if (name) loadMta(name); return null; }
       const I = instantiate(gltf, { color: color ?? 0xb9bcbf, length: lengthOf(kind), env });
+      I.name = name;
       return carView(scene, I, kind);
     },
     preload(kinds = Object.keys(FLEET_POOL)) { for (const k of kinds) for (const n of FLEET_POOL[k]) loadMta(n); },

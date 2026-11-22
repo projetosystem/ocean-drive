@@ -244,7 +244,7 @@ export function createVehicles(scene, {
     const h = traffic?.handOff?.(c);
     if (!h) return null;
     const pose = { x: h.x, z: h.z, yaw: h.yaw };
-    const view = kit.makeDrivable(h.kind, h.color);
+    const view = kit.makeDrivable(h.kind, h.color, h.mta);
     const v = createVehicle(OPEN_SPECS[h.kind], pose, world);
     v.parked = true;
     v.engineOn = true;          // (it was running)

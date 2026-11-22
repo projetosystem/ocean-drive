@@ -14,7 +14,7 @@ import { registerLodHook, LOD } from './lod.js';
 import { QUALITY } from '../quality.js';
 import { staticCull } from '../renderer/batched-cull.js';
 import { loadMazda2, buildMazda2 } from './mazda2.js';
-import { loadMta, createMtaFleet, FLEET_POOL, instantiate as mtaInstantiate, loaded as mtaLoaded } from './mta-vehicles.js';
+import { loadMta, createMtaFleet, FLEET_POOL, seatAnchor, instantiate as mtaInstantiate, loaded as mtaLoaded } from './mta-vehicles.js';
 import {
   buildCars, buildParkedProcedural, carMovers, seat, groundReflect, clampRadiance,
   CAR_MAX_RADIANCE, shared, blockedBay,
@@ -1469,7 +1469,7 @@ export async function buildCarsGlb(scene, renderer) {
   if (mtaFleet) {
     mtaFleet.preload();
     const makeDrivable0 = kit.makeDrivable.bind(kit);
-    kit.makeDrivable = (kind, color) => mtaFleet.makeView(kind, color) ?? makeDrivable0(kind, color);
+    kit.makeDrivable = (kind, color, model) => mtaFleet.makeView(kind, color, model) ?? makeDrivable0(kind, color);
     // the traffic's cars: the MTA bodies too, in the instance shape world/traffic.js drives
     const makeModern0 = kit.makeModern.bind(kit);
     const turn = {};
@@ -1489,8 +1489,13 @@ export async function buildCarsGlb(scene, renderer) {
       scene.add(root);
       probe.hide.push(root);
       const w = I.wheels;
-      return { root, levels: [never, never], wheels: [[w.FL, w.FR, w.RL, w.RR].filter(Boolean)], wheelR: I.wheelR, len: I.len,
-        paint: I.paint, tail: null, brake3: null, rig: {}, sun, halos: null, kind, mta: true };
+      // the seat for the traffic's driver (world/crowd.js hangs a body from rig.pelvis)
+      const pelvis = new THREE.Object3D();
+      pelvis.position.copy(seatAnchor(I));
+      pelvis.scale.setScalar(1 / I.scale);
+      I.model.add(pelvis);
+      return { mtaName: name, root, levels: [never, never], wheels: [[w.FL, w.FR, w.RL, w.RR].filter(Boolean)], wheelR: I.wheelR, len: I.len,
+        paint: I.paint, tail: null, brake3: null, rig: { pelvis }, sun, halos: null, kind, mta: true };
     };
   }
   return {
