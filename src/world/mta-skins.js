@@ -89,8 +89,49 @@ function fit(src, mesh, donor, root) {
   const dp = donor.attributes.position, tmp = new THREE.Vector3();
   const dmin = new THREE.Vector3(1e9, 1e9, 1e9), dmax = new THREE.Vector3(-1e9, -1e9, -1e9);
   for (let i = 0; i < dp.count; i += 3) { tmp.fromBufferAttribute(dp, i).applyMatrix4(T); dmin.min(tmp); dmax.max(tmp); }
+  // the skins stand with their arms angled down; the donor's skeleton is in a T-pose. The arms are
+  // swung up to the horizontal about the shoulder (blended in over the shoulder, and tapering out
+  // before the legs), so the arm vertices lie along the arm bones and take their weights
+  const n0 = pos.count, nrm0 = g.attributes.normal;
+  const SP = new Float32Array(n0 * 3), SN = new Float32Array(n0 * 3);
+  {
+    let ymin = 1e9, ymax = -1e9;
+    for (let i = 0; i < n0; i++) { const y = pos.getY(i); ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
+    const H = ymax - ymin, shY = ymin + 0.79 * H, shX = 0.11 * H;
+    const tip = { 1: null, '-1': null };
+    for (let i = 0; i < n0; i++) {
+      const x = pos.getX(i), y = pos.getY(i), sg = x > 0 ? 1 : -1;
+      if (y < ymin + 0.35 * H || y > ymin + 0.9 * H) continue;
+      if (!tip[sg] || Math.abs(x) > Math.abs(tip[sg].x)) tip[sg] = { x, y };
+    }
+    const ang = {};
+    for (const sg of [1, -1]) {
+      const t = tip[sg];
+      // (angle below the horizontal of the pivot -> tip line; a skin already in a T-pose: ~0)
+      ang[sg] = t ? Math.max(0, Math.atan2(shY - t.y, Math.abs(t.x) - shX)) : 0;
+      if (ang[sg] > 1.2) ang[sg] = 0;
+    }
+    const sstep = (a, b2, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b2 - a))); return u * u * (3 - 2 * u); };
+    for (let i = 0; i < n0; i++) {
+      let x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      let nx = nrm0 ? nrm0.getX(i) : 0, ny = nrm0 ? nrm0.getY(i) : 1;
+      const sg = x > 0 ? 1 : -1;
+      // armness: well outside the torso, above the thighs
+      const w = sstep(shX * 0.9, shX * 2.2, Math.abs(x)) * sstep(ymin + 0.38 * H, ymin + 0.55 * H, y);
+      if (w > 0 && ang[sg]) {
+        const th = ang[sg] * w, c = Math.cos(th), sn = Math.sin(th);
+        // rotate (|x|-shX, y-shY) up by th about the pivot
+        const dx = Math.abs(x) - shX, dy = y - shY;
+        x = sg * (shX + dx * c - dy * sn); y = shY + dx * sn + dy * c;
+        const nax = sg * (nx * sg * c - ny * sn), nay = nx * sg * sn + ny * c;
+        nx = nax; ny = nay;
+      }
+      SP[i * 3] = x; SP[i * 3 + 1] = y; SP[i * 3 + 2] = z;
+      SN[i * 3] = nx; SN[i * 3 + 1] = ny; SN[i * 3 + 2] = nrm0 ? nrm0.getZ(i) : 0;
+    }
+  }
   const smin = new THREE.Vector3(1e9, 1e9, 1e9), smax = new THREE.Vector3(-1e9, -1e9, -1e9);
-  for (let i = 0; i < pos.count; i++) { tmp.fromBufferAttribute(pos, i); smin.min(tmp); smax.max(tmp); }
+  for (let i = 0; i < n0; i++) { tmp.set(SP[i * 3], SP[i * 3 + 1], SP[i * 3 + 2]); smin.min(tmp); smax.max(tmp); }
   const k = (dmax.y - dmin.y) / Math.max(0.1, smax.y - smin.y);
   const cx = (smin.x + smax.x) / 2, cz = (smin.z + smax.z) / 2;
   const dcx = (dmin.x + dmax.x) / 2, dcz = (dmin.z + dmax.z) / 2;
@@ -102,7 +143,7 @@ function fit(src, mesh, donor, root) {
   const v = new THREE.Vector3(), nv = new THREE.Vector3(), ds = new Float32Array(segs.length);
   const TAU = 0.045, nrm = g.attributes.normal;
   for (let i = 0; i < n; i++) {
-    v.set((pos.getX(i) - cx) * k + dcx, (pos.getY(i) - smin.y) * k + dmin.y, (pos.getZ(i) - cz) * k + dcz);
+    v.set((SP[i * 3] - cx) * k + dcx, (SP[i * 3 + 1] - smin.y) * k + dmin.y, (SP[i * 3 + 2] - cz) * k + dcz);
     let best = 1e9;
     for (let s = 0; s < segs.length; s++) { ds[s] = segDist(v, segs[s]); if (ds[s] < best) best = ds[s]; }
     // weights: the nearest segments, softly (within TAU of the nearest), the four strongest kept
@@ -115,7 +156,7 @@ function fit(src, mesh, donor, root) {
     v.applyMatrix4(Ti);
     P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z;
     if (nrm) {
-      nv.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i)).applyMatrix3(nm).normalize();
+      nv.set(SN[i * 3], SN[i * 3 + 1], SN[i * 3 + 2]).applyMatrix3(nm).normalize();
       N[i * 3] = nv.x; N[i * 3 + 1] = nv.y; N[i * 3 + 2] = nv.z;
     }
   }

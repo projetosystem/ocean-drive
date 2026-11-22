@@ -14,6 +14,8 @@
 
 ## 2026-11-22: F1 panel and MTA skins
 
+- MTA skins: the arms (angled down in the files) are swung up to the skeleton's T-pose before the weights are taken: no more stretched slabs where the hands move.
+
 - MTA cars (traffic and the one you drive) are lifted by what their tipping body would sink into the road (nose dive, roll): no more bumper through the asphalt.
 
 - F1 opens a panel: FPS readout, and the skin of the player and of the NPCs (original, one MTA skin, or a
