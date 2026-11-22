@@ -145,6 +145,10 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
       s.pitchV += (40 * (pT - s.pitch) - 2 * 0.3 * Math.sqrt(40) * s.pitchV) * dt;
       s.pitch += s.pitchV * dt;
       I.root.position.set(c.x, roadHeight(c.x), c.z);
+      // (the nose dive tips the body about its middle: a low car (the Shelby's splitter is ~5 cm
+      // up) would push its nose / tail into the road. It is lifted by what would sink, so the
+      // lip rests on the asphalt instead)
+      if (I.mta) I.root.position.y += Math.max(0, Math.abs(s.pitch) * I.len * 0.5 - 0.04);
       if (I.sway) {
         I.root.rotation.set(0, yaw, Math.atan(slope) * (c.dir > 0 ? 1 : -1), 'YXZ');
         I.sway.rotation.set(s.pitch, 0, 0);

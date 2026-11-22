@@ -14,6 +14,8 @@
 
 ## 2026-11-22: F1 panel and MTA skins
 
+- MTA cars (traffic and the one you drive) are lifted by what their tipping body would sink into the road (nose dive, roll): no more bumper through the asphalt.
+
 - F1 opens a panel: FPS readout, and the skin of the player and of the NPCs (original, one MTA skin, or a
   mix of all 20). `public/models/mta-skins/*.glb` are static meshes; `world/mta-skins.js` fits each one
   to a person's own skeleton at load (scaled to the body, vertices weighted to the nearest bone

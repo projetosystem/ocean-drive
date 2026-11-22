@@ -137,7 +137,10 @@ export function carView(scene, I, kind) {
     apply(v) {
       const g = I.root;
       g.visible = true;
-      g.position.set(v.x, v.bodyY, v.z);
+      // the sprung body tips about its middle: a low nose / sill would sink into the road, so it is
+      // lifted by what would go under (up to 10 cm), and rests on the asphalt
+      const lift = Math.min(0.1, Math.max(0, Math.abs(v.pitch) * I.len * 0.5 - 0.04, Math.abs(v.roll) * 0.95 - 0.06));
+      g.position.set(v.x, v.bodyY + lift, v.z);
       g.rotation.set(-v.pitch, v.yaw + Math.PI, -v.roll, 'YXZ');
       I.model.position.y = -(v.visSink ?? 0);
       const dd = v.steer, ad = Math.abs(dd), S = v.spec;
