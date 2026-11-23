@@ -198,7 +198,12 @@ function fit(src, mesh, donor, root) {
 
 const EMPTY = new THREE.BufferGeometry();
 EMPTY.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
-EMPTY.setIndex([]);
+EMPTY.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(9), 3));
+EMPTY.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(6), 2));
+EMPTY.setAttribute('skinIndex', new THREE.BufferAttribute(new Uint16Array(12), 4));
+EMPTY.setAttribute('skinWeight', new THREE.BufferAttribute(new Float32Array(12), 4));
+EMPTY.setAttribute('zone', new THREE.BufferAttribute(new Float32Array(12), 4));
+EMPTY.setDrawRange(0, 0);   // (nothing drawn, but every attribute a skinned mesh reads is there)
 const cache = new Map();   // skin|asset|level|index -> geometry
 function material(src) {
   return src.mats.map((q) => {
