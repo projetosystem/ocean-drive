@@ -893,6 +893,22 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
       setWorldQuat(Ft, _wq.setFromUnitVectors(_u, _F).multiply(Ft.getWorldQuaternion(_aq)));
     }
   }
+  // Low cars (Supra, Silvia...): the seated clip's feet go through the floor and show under the
+  // body. Each ankle is lifted onto the floor level (0.26 m over the road, car-local) by the leg IK.
+  const _fa = new THREE.Vector3(), _fr = new THREE.Vector3(), _fk = new THREE.Vector3();
+  function feetAboveFloor(P, rig, floor = 0.26) {
+    const B = P.bones;
+    if (!B.RightUpLeg || !rig.pelvis?.parent?.parent) return;
+    rig.pelvis.parent.parent.getWorldPosition(_fr);
+    for (const side of ['Left', 'Right']) {
+      const A = B[side + 'Foot'].getWorldPosition(_fa);
+      const min = _fr.y + floor;
+      if (A.y >= min) continue;
+      _fa.y = min;
+      _fk.set(0, 0, 1).transformDirection(rig.pelvis.matrixWorld);
+      ik2(B[side + 'UpLeg'], B[side + 'Leg'], B[side + 'Foot'], _fa, _fk);
+    }
+  }
   const makeDriver = ({ rig }) => {
     const name = driverChars[driverN++ % driverChars.length];
     const P = createPerson(chars[name], { tints: outfit(rnd), shadow: false });
@@ -935,6 +951,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
         if (d < 28 && hw < 0.1) {
           P.root.updateMatrixWorld(true);
           handsOnRim(P, rg, G, hold, step, d < 12);
+          feetAboveFloor(P, rg);
         }
       },
     };
@@ -998,6 +1015,7 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
         P.bones.Head.scale.setScalar(rig.chase ? 1 : 0.001);
         P.root.updateMatrixWorld(true);
         handsOnRim(P, rig, G, hold, dt);
+        feetAboveFloor(P, rig);
       },
     });
     return () => { modernDetach?.(); modernDetach = null; };

@@ -196,6 +196,9 @@ function fit(src, mesh, donor, root) {
   return out;
 }
 
+const EMPTY = new THREE.BufferGeometry();
+EMPTY.setAttribute('position', new THREE.BufferAttribute(new Float32Array(9), 3));
+EMPTY.setIndex([]);
 const cache = new Map();   // skin|asset|level|index -> geometry
 function material(src) {
   return src.mats.map((q) => {
@@ -229,13 +232,15 @@ export async function applySkin(P, id) {
   for (const [m, lv, i] of meshes) {
     const key = `${id}|${P.asset.name}|${lv}|${i}`;
     let geo = cache.get(key);
-    if (!geo) {
+    if (!geo && i === 0) {
       geo = fit(src, m, m.userData.orig?.geometry ?? m.geometry, P.root);   // (the original body sets the size)
       cache.set(key, geo);
     }
     if (!m.userData.orig) m.userData.orig = { geometry: m.geometry, material: m.material };
-    m.geometry = geo;
-    m.material = mat;
+    // (the donor body is several meshes: the skin is drawn once, on the first of each level; the
+    // others get nothing to draw, or the copies would fight over the same surface)
+    m.geometry = i === 0 ? geo : EMPTY;
+    m.material = i === 0 ? mat : m.userData.orig.material;
     // (hair cards of the original body gone: the skin is one opaque mesh)
   }
   P.skin = id;
