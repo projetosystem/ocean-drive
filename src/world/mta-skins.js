@@ -86,7 +86,7 @@ function segments(mesh, rinv) {
       const k = /Head/.test(name) ? 1.1 : /Hand/.test(name) ? 0.8 : /Toe/.test(name) ? 0.7 : 0.5;
       end = at[i].clone().addScaledVector(dir, k);
     }
-    out.push({ i, a: at[i].clone(), b: end });
+    out.push({ i, name, a: at[i].clone(), b: end });
   }
   return out;
 }
@@ -116,11 +116,13 @@ function fit(src, mesh, donor, root) {
   // swung up to the horizontal about the shoulder (blended in over the shoulder, and tapering out
   // before the legs), so the arm vertices lie along the arm bones and take their weights
   const n0 = pos.count, nrm0 = g.attributes.normal;
-  const SP = new Float32Array(n0 * 3), SN = new Float32Array(n0 * 3);
+  const SP = new Float32Array(n0 * 3), SN = new Float32Array(n0 * 3), AW = new Float32Array(n0);
+  let pivY = 0, pivX = 0;
   {
     let ymin = 1e9, ymax = -1e9;
     for (let i = 0; i < n0; i++) { const y = pos.getY(i); ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }
     const H = ymax - ymin, shY = ymin + 0.79 * H, shX = 0.11 * H;
+    pivY = shY; pivX = shX;
     const tip = { 1: null, '-1': null };
     for (let i = 0; i < n0; i++) {
       const x = pos.getX(i), y = pos.getY(i), sg = x > 0 ? 1 : -1;
@@ -141,6 +143,7 @@ function fit(src, mesh, donor, root) {
       const sg = x > 0 ? 1 : -1;
       // armness: well outside the torso, above the thighs
       const w = sstep(shX * 0.9, shX * 2.2, Math.abs(x)) * sstep(ymin + 0.38 * H, ymin + 0.55 * H, y);
+      AW[i] = w;
       if (w > 0 && ang[sg]) {
         const th = ang[sg] * w, c = Math.cos(th), sn = Math.sin(th);
         // rotate (|x|-shX, y-shY) up by th about the pivot
@@ -159,6 +162,23 @@ function fit(src, mesh, donor, root) {
   const cx = (smin.x + smax.x) / 2, cz = (smin.z + smax.z) / 2;
   const dcx = (dmin.x + dmax.x) / 2, dcz = (dmin.z + dmax.z) / 2;
   const segs = segments(mesh, rinv);
+  // the arms are matched to the skeleton's: the skin's shoulder pivot goes to the arm bone and the
+  // arm is stretched / shrunk along its length so its tip lies at the hand bone's end. Otherwise
+  // the skin's elbow bends at the wrong place (the sleeve folds into the belly) and the hand
+  // (fingers) trails out past the wrist
+  const armFix = {};
+  for (const sg of [1, -1]) {
+    const side = sg > 0 ? 'Left' : 'Right';
+    const arm = segs.find((q) => q.name === side + 'Arm'), hand = segs.find((q) => q.name === side + 'Hand');
+    if (!arm || !hand) continue;
+    // (which side is which: by the arm bone's x in root space)
+    const sgx = Math.sign(arm.a.x) || sg;
+    const px = (sgx * pivX - cx) * k + dcx, py = (pivY - smin.y) * k + dmin.y;
+    let tip = 0;
+    for (let i = 0; i < n0; i++) if (AW[i] > 0.95 && (SP[i * 3] > 0 ? 1 : -1) === sgx) tip = Math.max(tip, Math.abs((SP[i * 3] - cx) * k + dcx - px));
+    const want = Math.abs(hand.b.x - arm.a.x);
+    armFix[sgx] = { px, dy: arm.a.y - py, dxs: arm.a.x - px, f: tip > 0.05 ? THREE.MathUtils.clamp(want / tip, 0.6, 1.5) : 1 };
+  }
   const n = pos.count;
   const P = new Float32Array(n * 3), N = new Float32Array(n * 3);
   const SI = new Uint16Array(n * 4), SW = new Float32Array(n * 4);
@@ -167,6 +187,13 @@ function fit(src, mesh, donor, root) {
   const TAU = 0.045, nrm = g.attributes.normal;
   for (let i = 0; i < n; i++) {
     v.set((SP[i * 3] - cx) * k + dcx, (SP[i * 3 + 1] - smin.y) * k + dmin.y, (SP[i * 3 + 2] - cz) * k + dcz);
+    const af = armFix[v.x > 0 ? 1 : -1] ?? armFix[v.x > 0 ? -1 : 1];
+    if (af && AW[i] > 0) {
+      const a = AW[i], sgn = v.x > af.px ? 1 : -1;
+      // (the arm's own side: sg of the pivot)
+      v.x = af.px + (v.x - af.px) * (1 + (af.f - 1) * a) + af.dxs * a;
+      v.y += af.dy * a;
+    }
     let best = 1e9;
     for (let s = 0; s < segs.length; s++) { ds[s] = segDist(v, segs[s]); if (ds[s] < best) best = ds[s]; }
     // weights: the nearest segments, softly (within TAU of the nearest), the four strongest kept
