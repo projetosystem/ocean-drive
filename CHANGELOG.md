@@ -14,6 +14,8 @@
 
 ## 2026-11-22: F1 panel and MTA skins
 
+- MTA skins reconverted with every part (face, shirt, trousers, shoes...: the BinMesh index lists of the DFFs were not read, so each skin had one texture over the whole body); `world/mta-skins.js` merges the parts with one material each.
+
 - MTA skins: the arms (angled down in the files) are swung up to the skeleton's T-pose before the weights are taken: no more stretched slabs where the hands move.
 
 - MTA cars (traffic and the one you drive) are lifted by what their tipping body would sink into the road (nose dive, roll): no more bumper through the asphalt.

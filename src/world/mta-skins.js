@@ -30,12 +30,35 @@ const sources = new Map();   // id -> Promise<{ geometry, map, alpha }>
 function loadSource(id) {
   if (!sources.has(id)) {
     sources.set(id, new GLTFLoader().loadAsync(`${BASE}${id}.glb`).then((g) => {
-      let mesh = null;
+      // the skin is several parts (face, shirt, trousers, shoes...: one material each): merged into
+      // one geometry with a group per material
       g.scene.updateMatrixWorld(true);
-      g.scene.traverse((o) => { if (o.isMesh && !mesh) mesh = o; });
-      const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
-      const m = mesh.material;
-      return { geometry, map: m.map ?? null, alpha: m.alphaTest > 0 || m.transparent };
+      const parts = [];
+      g.scene.traverse((o) => { if (o.isMesh) parts.push(o); });
+      const geoms = parts.map((o) => o.geometry.clone().applyMatrix4(o.matrixWorld));
+      let n = 0, ni = 0;
+      for (const q of geoms) { n += q.attributes.position.count; ni += q.index ? q.index.count : q.attributes.position.count; }
+      const P = new Float32Array(n * 3), N = new Float32Array(n * 3), U = new Float32Array(n * 2), I = new Uint32Array(ni);
+      const out = new THREE.BufferGeometry();
+      let v0 = 0, i0 = 0;
+      geoms.forEach((q, k) => {
+        const c = q.attributes.position.count, nm = q.attributes.normal, uv = q.attributes.uv;
+        for (let i = 0; i < c; i++) {
+          P[(v0 + i) * 3] = q.attributes.position.getX(i); P[(v0 + i) * 3 + 1] = q.attributes.position.getY(i); P[(v0 + i) * 3 + 2] = q.attributes.position.getZ(i);
+          if (nm) { N[(v0 + i) * 3] = nm.getX(i); N[(v0 + i) * 3 + 1] = nm.getY(i); N[(v0 + i) * 3 + 2] = nm.getZ(i); }
+          if (uv) { U[(v0 + i) * 2] = uv.getX(i); U[(v0 + i) * 2 + 1] = uv.getY(i); }
+        }
+        const ic = q.index ? q.index.count : c;
+        for (let i = 0; i < ic; i++) I[i0 + i] = v0 + (q.index ? q.index.getX(i) : i);
+        out.addGroup(i0, ic, k);
+        v0 += c; i0 += ic;
+      });
+      out.setAttribute('position', new THREE.BufferAttribute(P, 3));
+      out.setAttribute('normal', new THREE.BufferAttribute(N, 3));
+      out.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+      out.setIndex(new THREE.BufferAttribute(I, 1));
+      const mats = parts.map((o) => ({ map: o.material.map ?? null, alpha: o.material.alphaTest > 0 || o.material.transparent, color: o.material.color.getHex() }));
+      return { geometry: out, mats };
     }).catch((e) => { console.warn('mta-skins: ' + id + ' failed', e); return null; }));
   }
   return sources.get(id);
@@ -168,17 +191,20 @@ function fit(src, mesh, donor, root) {
   out.setAttribute('skinWeight', new THREE.BufferAttribute(SW, 4));
   out.setAttribute('zone', new THREE.BufferAttribute(new Float32Array(n * 4), 4));   // (the people's tint mask: none)
   if (g.index) out.setIndex(g.index.clone());
+  for (const gr of g.groups) out.addGroup(gr.start, gr.count, gr.materialIndex);
   out.computeBoundingSphere();
   return out;
 }
 
 const cache = new Map();   // skin|asset|level|index -> geometry
 function material(src) {
-  const m = new THREE.MeshStandardMaterial({ map: src.map, roughness: 0.78, metalness: 0, side: THREE.DoubleSide });
-  if (src.alpha) { m.alphaTest = 0.45; }
-  // (the people's tint hook: nothing to tint)
-  m.userData.tint = { uTint: { value: [0, 1, 2].map(() => new THREE.Vector4(1, 1, 1, 0)) } };
-  return m;
+  return src.mats.map((q) => {
+    const m = new THREE.MeshStandardMaterial({ map: q.map, color: q.map ? 0xffffff : q.color, roughness: 0.78, metalness: 0, side: THREE.DoubleSide });
+    if (q.alpha) m.alphaTest = 0.45;
+    // (the people's tint hook: nothing to tint)
+    m.userData.tint = { uTint: { value: [0, 1, 2].map(() => new THREE.Vector4(1, 1, 1, 0)) } };
+    return m;
+  });
 }
 
 // put skin `id` (or, null, the original body) on person P; resolves true once applied
