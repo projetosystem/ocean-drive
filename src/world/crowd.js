@@ -1036,6 +1036,15 @@ export function buildCrowd(scene, assets, { beach, hotels, walker = null, getCar
     bodies() { return { npc: [...agents.map((a) => a.P), ...drivers], player: [playerDriver, modernDriver?.P].filter(Boolean) }; },
     attachDrivers,
     seatPlayer,
+    // F1 panel: every pedestrian off the map / back (the ones the scenes hide stay hidden)
+    setHidden(on) {
+      for (const A of agents) {
+        if (on && !A.hidden) { A.hidden = true; A._f1 = true; }
+        else if (!on && A._f1) { A.hidden = false; A._f1 = false; }
+        place(A);
+        A.P.setVisible(!A.hidden);
+      }
+    },
     // pedestrians for the traffic sim (right of way on the crosswalks)
     peds() { const out = []; for (const A of agents) if (!A.hidden && A.path?.crossings.length) out.push({ x: A.x, z: A.z }); return out; },
     update(dt, camera) { lastCam = camera; update(dt, camera); },

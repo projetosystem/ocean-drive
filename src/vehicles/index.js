@@ -826,6 +826,38 @@ export function createVehicles(scene, {
     recover,
     setView: (mode) => setView(mode),
     toggleView,
+    // F1 panel: a new car of body `kind` (and MTA model `mtaName`) a few metres ahead of the walker,
+    // parked with the engine off; enter it at the door as any other
+    spawn(kind, mtaName = null, color = null) {
+      if (!kit?.makeDrivable || !OPEN_SPECS[kind] || rider) return null;
+      const yaw = walker.yaw, fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+      const paints = kit.paints ?? [0xb9bcbf];
+      const col = color ?? paints[Math.floor(Math.random() * paints.length)];
+      const view = kit.makeDrivable(kind, col, mtaName);
+      const half = (OPEN_SPECS[kind].width ?? 1.9) / 2;
+      let x = walker.pos.x + fx * (half + 3), z = walker.pos.y + fz * (half + 3);
+      const v = createVehicle(OPEN_SPECS[kind], { x, z, yaw: yaw + Math.PI / 2 }, world);
+      v.parked = true; v.engineOn = false;
+      // (clear of walls and props: slid ahead until nothing is in the way)
+      for (let k = 0; k < 40 && blockedAt(v, x, z, v.yaw, world); k++) { x += fx * 0.5; z += fz * 0.5; Object.assign(v, { x, z }); }
+      settle(v, world);
+      const e = { kind: 'car', body: kind, origin: 'traffic', color: col, v, m: null, drive: view, kick: 1, startT: 0, door: doorZ(kind), used: clock };
+      list.push(e);
+      walker.world.circles?.push(...v.circlesWorld);
+      view.apply(v);
+      pose3(e, clock);
+      retire();
+      return e;
+    },
+    // F1 panel: the parked cars off the map / back (the ones driven off stay)
+    setFleetHidden(on) {
+      if (!fleet) return;
+      const used = new Set(list.map((q) => q.spot).filter(Boolean));
+      for (const s of fleet.cars) {
+        if (on && !s.taken) { fleet.take(s); s._f1 = true; }
+        else if (!on && s._f1) { s._f1 = false; if (!used.has(s)) fleet.release(s); }
+      }
+    },
     mount: (kind) => mount(list.find((e) => e.kind === kind)),
     dismount,
     // the parked fleet: spots that can be driven off (not taken), nearest first

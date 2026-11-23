@@ -327,7 +327,23 @@ addEventListener('keydown', (ev) => { if (ev.code === 'KeyQ' && !ev.repeat && !S
 const soundSystem = createSoundSystem({ root: cars.drive?.root, audio, vehicles, shot: SHOT });
 window.__sound = soundSystem;
 // F1: FPS readout, MTA skins for the player and the NPCs
-window.__f1 = createF1Panel({ hud: document.getElementById('hud'), bodies: () => { const b = people?.bodies?.() ?? { npc: [], player: [] }; if (avatar?.P) b.player.push(avatar.P); return b; }, shot: SHOT });
+// F1 panel, low graphics: a lower render scale (no stepping back up) and no sun shadow
+function setLowGfx(on) {
+  DYN.min = on ? 0.5 : 0.6;
+  DYN.max = on ? 0.5 : QUALITY.renderScale;
+  setRenderScale(on ? 0.5 : Math.min(QUALITY.renderScale, DYN.max));
+  sky.sun.castShadow = !on;
+  requestShadow?.();
+}
+window.__lowGfx = setLowGfx;
+window.__f1 = createF1Panel({
+  hooks: {
+    spawn: (kind, mta) => vehicles.spawn?.(kind, mta),
+    cars: (hide) => { traffic.setOff?.(hide); vehicles.setFleetHidden?.(hide); },
+    npcs: (hide) => people?.setHidden?.(hide),
+    low: setLowGfx,
+  },
+  hud: document.getElementById('hud'), bodies: () => { const b = people?.bodies?.() ?? { npc: [], player: [] }; if (avatar?.P) b.player.push(avatar.P); return b; }, shot: SHOT });
 window.__radio = { next: radioNext, get station() { return audio.radio.station; }, get name() { return audio.radio.name; }, ui: radioUi };
 // what the hero's rear-view mirror draws besides the cars (world/cars-glb.js)
 const MIRRORED = new Set(['placeholders', 'hotels', 'palms', 'street', 'ocean', 'parked-paint', 'parked-dark', 'parked-trim', 'parked-tyre']);

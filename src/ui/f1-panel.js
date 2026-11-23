@@ -3,15 +3,16 @@
 //   Player: the original body or one skin (on foot, in the car, in third person).
 //   NPCs:   the originals, one skin for everyone, or a mix of all skins.
 import { skinList, applySkin } from '../world/mta-skins.js';
+import { FLEET_POOL } from '../world/mta-vehicles.js';
 
 const KEY = 'od.f1';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } };
 const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* private window */ } };
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
 
-export function createF1Panel({ hud, bodies, shot = false }) {
+export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   if (shot) return null;
-  const st = { fps: false, player: '', npc: '', ...load() };
+  const st = { fps: false, player: '', npc: '', noCars: false, noNpcs: false, low: false, ...load() };
   let skins = [];
   const css = document.createElement('style');
   css.textContent = `
@@ -22,6 +23,9 @@ export function createF1Panel({ hud, bodies, shot = false }) {
     #f1 h3 { margin: 0 0 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 236, 205, 0.75); }
     #f1 label { display: block; margin: 9px 0 3px; font-size: 11px; color: rgba(255, 244, 230, 0.7); }
     #f1 select { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255, 236, 205, 0.25); background: #241c18; color: #fff4e6; font: inherit; }
+    #f1 button { padding: 6px 10px; border-radius: 6px; border: 1px solid rgba(255, 236, 205, 0.35); background: #3a2a20; color: #fff4e6; font: inherit; cursor: pointer; white-space: nowrap; }
+    #f1 button:hover { background: #4d3828; }
+    #f1 .row select { flex: 1; min-width: 0; }
     #f1 .row { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; }
     #f1 .hint { margin-top: 10px; font-size: 10.5px; color: rgba(255, 244, 230, 0.5); }`;
   document.head.appendChild(css);
@@ -32,6 +36,11 @@ export function createF1Panel({ hud, bodies, shot = false }) {
     <div class="row"><input type="checkbox" id="f1fps"><label for="f1fps" style="margin:0">Mostrar FPS</label></div>
     <label for="f1player">Skin do jogador</label><select id="f1player"></select>
     <label for="f1npc">Skin dos NPCs</label><select id="f1npc"></select>
+    <label for="f1car">Spawnar veículo</label>
+    <div class="row"><select id="f1car"></select><button id="f1spawn" type="button">Spawnar</button></div>
+    <div class="row"><input type="checkbox" id="f1nocars"><label for="f1nocars" style="margin:0">Tirar os carros do mapa</label></div>
+    <div class="row"><input type="checkbox" id="f1nonpc"><label for="f1nonpc" style="margin:0">Tirar os NPCs do mapa</label></div>
+    <div class="row"><input type="checkbox" id="f1low"><label for="f1low" style="margin:0">Gráficos baixos (PC fraco)</label></div>
     <div class="hint">F1 abre / fecha · skins do MTA</div>`;
   document.body.appendChild(el);
   // (keys typed in the panel are not the game's)
@@ -46,7 +55,17 @@ export function createF1Panel({ hud, bodies, shot = false }) {
     $('f1player').value = st.player;
     $('f1npc').value = st.npc;
     $('f1fps').checked = st.fps;
+    $('f1nocars').checked = st.noCars; $('f1nonpc').checked = st.noNpcs; $('f1low').checked = st.low;
   };
+  // the cars that can be spawned: every MTA body of the fleet pool, with its body kind
+  const spawnable = [];
+  for (const [kind, names] of Object.entries(FLEET_POOL)) for (const n of names) if (!spawnable.some((q) => q.mta === n)) spawnable.push({ kind, mta: n, label: n.replace(/^carro-/, '').replace(/-/g, ' ') });
+  $('f1car').innerHTML = spawnable.map((q, i) => `<option value="${i}">${q.label.replace(/^./, (c) => c.toUpperCase())}</option>`).join('');
+  $('f1spawn').addEventListener('click', () => { const q = spawnable[+$('f1car').value]; if (q) hooks.spawn?.(q.kind, q.mta); });
+  const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); };
+  $('f1nocars').addEventListener('change', () => { st.noCars = $('f1nocars').checked; save(st); hooks.cars?.(st.noCars); });
+  $('f1nonpc').addEventListener('change', () => { st.noNpcs = $('f1nonpc').checked; save(st); hooks.npcs?.(st.noNpcs); });
+  $('f1low').addEventListener('change', () => { st.low = $('f1low').checked; save(st); hooks.low?.(st.low); });
   // the frame-rate readout: its own counter (frames over the last half second)
   const fpsEl = document.createElement('div');
   fpsEl.style.cssText = 'position:fixed;top:12px;left:12px;z-index:39;padding:4px 9px;border-radius:6px;background:rgba(18,14,12,.72);color:#9dff8a;font:600 13px/1.3 ui-monospace,Menlo,Consolas,monospace;pointer-events:none;display:none';
@@ -98,6 +117,8 @@ export function createF1Panel({ hud, bodies, shot = false }) {
     if (!el.classList.contains('hidden')) document.exitPointerLock?.();
   });
   skinList().then((l) => { skins = l; fillSelects(); showFps(); sweep(); });
+  // (the saved choices, once the world is up)
+  setTimeout(() => { if (st.noCars || st.noNpcs || st.low) applyToggles(); }, 2500);
   setInterval(sweep, 1500);
-  return { el, state: st, sweep, apply: applySkin };
+  return { el, state: st, sweep, apply: applySkin, applyToggles };
 }

@@ -119,6 +119,7 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
   const setLamp = (m, [hex, k]) => { if (m) { m.emissive.setHex(hex); m.emissiveIntensity = k; } };
   // debug hooks for the by-eye harness: freeze the sim, extra (unseen) pedestrians
   const debug = { freeze: false, peds: [] };
+  let off = false;   // (F1 panel: the traffic taken off the map)
   function update(dt, { camera, peds = [], obstacles = [] }) {
     const viewer = camera ? { x: camera.position.x, z: camera.position.z } : null;
     if (!debug.freeze) sim.update(dt, { peds: debug.peds.length ? [...peds, ...debug.peds] : peds, obstacles, viewer });
@@ -129,9 +130,9 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
       if (s.lastRespawn !== c.respawns || !s.inst) bind(s);
       const I = s.inst;
       const d = viewer ? Math.hypot(viewer.x - c.x, viewer.z - c.z) : 0;
-      const vis = !c.hidden && Math.abs(c.z) < END_Z && d < CULL;
+      const vis = !off && !c.hidden && Math.abs(c.z) < END_Z && d < CULL;
       I.root.visible = vis;
-      for (const q of s.circles) { q.x = c.x; q.z = c.z + q.dz * (c.len / 4.8); q.r = c.hidden ? 0 : 0.95; }
+      for (const q of s.circles) { q.x = c.x; q.z = c.z + q.dz * (c.len / 4.8); q.r = c.hidden || off ? 0 : 0.95; }
       if (c.honk > (s.honks ?? 0)) { s.honks = c.honk; honkQueue.push({ x: c.x, z: c.z, classic: c.classic, id: c.id }); }
       if (!vis) { s.vPrev = c.v; continue; }
       // pose: lane, road camber, heading; a sprung nose dive / squat from the acceleration,
@@ -191,6 +192,7 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
 
   return {
     sim, colliders, update, debug,
+    setOff(v) { off = !!v; },
     get cars() { return sim.cars; },
     // Seat a skinned driver in every traffic car (the Mixamo drivers): make({ rig, kind,
     // classic }) returns { body, update(rig, car) }. `body` is parented to the model's
@@ -203,7 +205,7 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
     },
     // audio: per visible car { id, x, z, v, a, dir, classic, braking }
     audioList() {
-      return sim.cars.filter((c) => !c.hidden && Math.abs(c.z) < END_Z).map((c) => ({ id: c.id, x: c.x, z: c.z, v: c.v, a: c.a, dir: c.dir, classic: c.classic, braking: c.braking }));
+      return off ? [] : sim.cars.filter((c) => !c.hidden && Math.abs(c.z) < END_Z).map((c) => ({ id: c.id, x: c.x, z: c.z, v: c.v, a: c.a, dir: c.dir, classic: c.classic, braking: c.braking }));
     },
     honks() { return honkQueue.splice(0); },
     // the player takes stopped car c (a modern one): its pose, body and paint, and its seated

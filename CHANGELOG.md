@@ -16,6 +16,7 @@
 
 - MTA skins reconverted with every part (face, shirt, trousers, shoes...: the BinMesh index lists of the DFFs were not read, so each skin had one texture over the whole body); `world/mta-skins.js` merges the parts with one material each.
 
+- F1 panel: spawn any MTA car in front of you, take the cars (traffic and parked) and the NPCs off the map, and a low-graphics switch (half render scale, no sun shadow) for weaker PCs. Choices are kept.
 - Drivers in low cars (Supra...): the feet no longer go through the floor and show under the body (ankles held above the floor level by the leg IK).
 - MTA skins: only the first mesh of each LOD carries the skin (the leftover copies drew skin over the head).
 - MTA skins: the arms (angled down in the files) are swung up to the skeleton's T-pose before the weights are taken: no more stretched slabs where the hands move.
