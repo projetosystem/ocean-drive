@@ -22,11 +22,13 @@ export const FLEET_POOL = {
   hatch: ['carro-golf'],
   sedan: ['carro-lancer'],
   wagon: ['carro-lancer'],
-  coupe: ['carro-silvia', 'carro-toyota-supra', 'carro-gtr', 'carro-shelby', 'carro-bmw-i8'],
+  coupe: ['carro-silvia', 'carro-toyota-supra', 'carro-gtr', 'carro-shelby'],
   suv: ['carro-vapid', 'carro-suburban'],
   crossover: ['carro-suburban'],   // (no model of their own: the nearest body, scaled to the kind's length)
-  pickup: ['carro-saveiro-cross', 'carro-suburban'],
+  pickup: ['carro-suburban'],
 };
+// the heavy ones stay out of the fleet and the traffic; they can only be spawned from the F1 panel
+export const SPAWN_EXTRA = [{ kind: 'coupe', mta: 'carro-bmw-i8' }, { kind: 'pickup', mta: 'carro-saveiro-cross' }];
 export const MOTO_FILE = 'moto-kawasaki';
 export const QUAD_FILE = 'quadriciclo';
 export const modelFor = (kind, color = 0) => {

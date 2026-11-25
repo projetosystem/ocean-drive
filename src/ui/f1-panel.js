@@ -3,7 +3,7 @@
 //   Player: the original body or one skin (on foot, in the car, in third person).
 //   NPCs:   the originals, one skin for everyone, or a mix of all skins.
 import { skinList, applySkin } from '../world/mta-skins.js';
-import { FLEET_POOL } from '../world/mta-vehicles.js';
+import { FLEET_POOL, SPAWN_EXTRA, loadMta } from '../world/mta-vehicles.js';
 
 const KEY = 'od.f1';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } };
@@ -61,8 +61,9 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   // the cars that can be spawned: every MTA body of the fleet pool, with its body kind
   const spawnable = [];
   for (const [kind, names] of Object.entries(FLEET_POOL)) for (const n of names) if (!spawnable.some((q) => q.mta === n)) spawnable.push({ kind, mta: n, label: n.replace(/^carro-/, '').replace(/-/g, ' ') });
+  for (const q of SPAWN_EXTRA) spawnable.push({ ...q, label: q.mta.replace(/^carro-/, '').replace(/-/g, ' ') });
   $('f1car').innerHTML = spawnable.map((q, i) => `<option value="${i}">${q.label.replace(/^./, (c) => c.toUpperCase())}</option>`).join('');
-  $('f1spawn').addEventListener('click', () => { const q = spawnable[+$('f1car').value]; if (q) hooks.spawn?.(q.kind, q.mta); });
+  $('f1spawn').addEventListener('click', async () => { const q = spawnable[+$('f1car').value]; if (!q) return; await loadMta(q.mta); hooks.spawn?.(q.kind, q.mta); });
   $('f1despawn').addEventListener('click', () => hooks.despawn?.());
   const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); };
   $('f1nocars').addEventListener('change', () => { st.noCars = $('f1nocars').checked; save(st); hooks.cars?.(st.noCars); });
