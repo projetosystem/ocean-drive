@@ -22,10 +22,10 @@ export const FLEET_POOL = {
   hatch: ['carro-golf'],
   sedan: ['carro-lancer'],
   wagon: ['carro-lancer'],
-  coupe: ['carro-silvia', 'carro-toyota-supra', 'carro-gtr', 'carro-shelby'],
+  coupe: ['carro-silvia', 'carro-toyota-supra', 'carro-gtr', 'carro-shelby', 'carro-bmw-i8'],
   suv: ['carro-vapid', 'carro-suburban'],
   crossover: ['carro-suburban'],   // (no model of their own: the nearest body, scaled to the kind's length)
-  pickup: ['carro-suburban'],
+  pickup: ['carro-saveiro-cross', 'carro-suburban'],
 };
 export const MOTO_FILE = 'moto-kawasaki';
 export const QUAD_FILE = 'quadriciclo';

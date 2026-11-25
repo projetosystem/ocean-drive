@@ -123,7 +123,7 @@ const loadStep = (fraction, label) => {
 
 // Sun shadow re-renders redraw every caster in the shadow box, so all requests (the viewer
 // moving the box, LOD changes, a ridden vehicle) are coalesced to at most 5 per second.
-const SHADOW_GAP = 0.2;
+let SHADOW_GAP = 0.2;
 let shadowWanted = true, shadowAt = -Infinity;
 const requestShadow = () => { shadowWanted = true; };
 
@@ -327,19 +327,22 @@ addEventListener('keydown', (ev) => { if (ev.code === 'KeyQ' && !ev.repeat && !S
 const soundSystem = createSoundSystem({ root: cars.drive?.root, audio, vehicles, shot: SHOT });
 window.__sound = soundSystem;
 // F1: FPS readout, MTA skins for the player and the NPCs
-// F1 panel, low graphics: a lower render scale (no stepping back up) and no sun shadow
+// F1 panel, low graphics: a lower render scale (no stepping back up) and a slow sun-shadow refresh
 function setLowGfx(on) {
   DYN.min = on ? 0.5 : 0.6;
   DYN.max = on ? 0.5 : QUALITY.renderScale;
   setRenderScale(on ? 0.5 : Math.min(QUALITY.renderScale, DYN.max));
-  sky.sun.castShadow = !on;
+  // (the sun shadow stays, redrawn far less often: each redraw is a visible hitch on a weak GPU,
+  // and switching the light's shadow off would recompile every material)
+  SHADOW_GAP = on ? 1.0 : 0.2;
   requestShadow?.();
 }
 window.__lowGfx = setLowGfx;
 window.__f1 = createF1Panel({
   hooks: {
     spawn: (kind, mta) => vehicles.spawn?.(kind, mta),
-    cars: (hide) => { traffic.setOff?.(hide); vehicles.setFleetHidden?.(hide); },
+    despawn: () => vehicles.despawn?.(),
+    cars: (hide) => { traffic.setOff?.(hide); vehicles.setFleetHidden?.(hide); cars.setParkedHidden?.(hide); },
     npcs: (hide) => people?.setHidden?.(hide),
     low: setLowGfx,
   },

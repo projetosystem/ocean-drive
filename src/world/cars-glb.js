@@ -1449,7 +1449,8 @@ export async function buildCarsGlb(scene, renderer) {
     far.visible = false;
     scene.add(far);
     m.far = far;
-    colliders.push({ min: { x: s.x - 1.0, y: 0, z: s.z - 2.9 }, max: { x: s.x + 1.0, y: 1.2, z: s.z + 2.9 } });
+    m.box = { min: { x: s.x - 1.0, y: 0, z: s.z - 2.9 }, max: { x: s.x + 1.0, y: 1.2, z: s.z + 2.9 } };
+    colliders.push(m.box);
     m.parkedClassic = true;
     return m;
   });
@@ -1502,6 +1503,15 @@ export async function buildCarsGlb(scene, renderer) {
     mta: { bike: () => null, atv: () => null },   // (the MTA moto / quad were dropped: generic bikes)
     hero: hero.car, mazda: mazda?.car ?? null, mover: pool[0].car, movers: pool.map((m) => m.car), colliders, fleet, probe, glb: true,
     parkedClassics: parkedClassics.map((m) => m.car),
+    // F1 panel: the parked classics and the Mazda off the map (sunk out of sight) / back
+    setParkedHidden(on) {
+      const dy = on ? -1000 : 0;
+      for (const m of parkedClassics) {
+        if (m.box) m.box.disabled = on;
+        for (const o of [m.car, m.far]) if (o) { o.position.y = (o._y0 ??= o.position.y) + dy; }
+      }
+      if (mazda?.car) mazda.car.position.y = (mazda.car._y0 ??= mazda.car.position.y) + dy;
+    },
     traffic: kit,
     // the drivable hero (vehicles/index.js): start pose in sim terms, pose from the sim, eye
     drive: {

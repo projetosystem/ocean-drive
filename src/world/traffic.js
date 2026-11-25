@@ -207,7 +207,7 @@ export function buildTraffic(scene, { kit, shot = false, seed = 11 } = {}) {
     audioList() {
       return off ? [] : sim.cars.filter((c) => !c.hidden && Math.abs(c.z) < END_Z).map((c) => ({ id: c.id, x: c.x, z: c.z, v: c.v, a: c.a, dir: c.dir, classic: c.classic, braking: c.braking }));
     },
-    honks() { return honkQueue.splice(0); },
+    honks() { const q = honkQueue.splice(0); return off ? [] : q; },
     // the player takes stopped car c (a modern one): its pose, body and paint, and its seated
     // driver's person with the seat's world matrix; the car leaves the lane (the sim's
     // detach) and its instance goes back to the pool without the driver

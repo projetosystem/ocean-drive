@@ -841,13 +841,31 @@ export function createVehicles(scene, {
       // (clear of walls and props: slid ahead until nothing is in the way)
       for (let k = 0; k < 40 && blockedAt(v, x, z, v.yaw, world); k++) { x += fx * 0.5; z += fz * 0.5; Object.assign(v, { x, z }); }
       settle(v, world);
-      const e = { kind: 'car', body: kind, origin: 'traffic', color: col, v, m: null, drive: view, kick: 1, startT: 0, door: doorZ(kind), used: clock };
+      const e = { kind: 'car', body: kind, origin: 'traffic', color: col, v, m: null, drive: view, kick: 1, startT: 0, door: doorZ(kind), used: clock, spawned: true };
       list.push(e);
       walker.world.circles?.push(...v.circlesWorld);
       view.apply(v);
       pose3(e, clock);
       retire();
       return e;
+    },
+    // F1 panel: the spawned car nearest to the walker (not the one being driven) is removed;
+    // true if there was one
+    despawn() {
+      let best = null, bd = 1e9;
+      for (const q of list) {
+        if (!q.spawned || q === rider || q === saved) continue;
+        const d = Math.hypot(walker.pos.x - q.v.x, walker.pos.y - q.v.z);
+        if (d < bd) { bd = d; best = q; }
+      }
+      if (!best) return false;
+      list.splice(list.indexOf(best), 1);
+      const wc = walker.world.circles;
+      if (wc) for (const c of best.v.circlesWorld) { const i = wc.indexOf(c); if (i >= 0) wc.splice(i, 1); }
+      best.detach?.();
+      best.damage?.dispose();
+      best.drive.dispose();
+      return true;
     },
     // F1 panel: the parked cars off the map / back (the ones driven off stay)
     setFleetHidden(on) {

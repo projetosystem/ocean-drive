@@ -58,7 +58,7 @@ function loadSource(id) {
       out.setAttribute('uv', new THREE.BufferAttribute(U, 2));
       out.setIndex(new THREE.BufferAttribute(I, 1));
       const mats = parts.map((o) => ({ map: o.material.map ?? null, alpha: o.material.alphaTest > 0 || o.material.transparent, color: o.material.color.getHex() }));
-      return { geometry: out, mats };
+      return { geometry: out, mats, id };
     }).catch((e) => { console.warn('mta-skins: ' + id + ' failed', e); return null; }));
   }
   return sources.get(id);
@@ -106,8 +106,9 @@ function fit(src, mesh, donor, root) {
   const g = src.geometry, pos = g.attributes.position;
   const rinv = root.matrixWorld.clone().invert();
   const bones = mesh.skeleton.bones, hip = Math.max(0, bones.findIndex((b) => /Hips$/.test(b.name)));
-  const S = new THREE.Matrix4().copy(mesh.bindMatrixInverse).multiply(bones[hip].matrixWorld).multiply(mesh.skeleton.boneInverses[hip]).multiply(mesh.bindMatrix);
-  const T = new THREE.Matrix4().copy(rinv).multiply(mesh.matrixWorld).multiply(S);
+  // (worked out from the hip bone alone: the mesh's own world / bind-inverse matrices may be stale
+  // when the person has not been drawn yet, as at start-up)
+  const T = new THREE.Matrix4().copy(rinv).multiply(bones[hip].matrixWorld).multiply(mesh.skeleton.boneInverses[hip]).multiply(mesh.bindMatrix);
   const Ti = T.clone().invert();
   const dp = donor.attributes.position, tmp = new THREE.Vector3();
   const dmin = new THREE.Vector3(1e9, 1e9, 1e9), dmax = new THREE.Vector3(-1e9, -1e9, -1e9);
@@ -252,6 +253,7 @@ export async function applySkin(P, id) {
       if (!o) continue;
       m.geometry = o.geometry; m.material = o.material; m.userData.orig = null;
     }
+    if (P.shadow?.userData.orig) { P.shadow.geometry = P.shadow.userData.orig; P.shadow.userData.orig = null; }
     P.skin = null;
     return true;
   }
@@ -260,7 +262,9 @@ export async function applySkin(P, id) {
   if (P.skin === id) return true;
   const mat = material(src);
   P.restPose();
-  P.root.updateMatrixWorld(true);
+  // (the parents too: a person whose parent group moved this frame has a stale world matrix, and the
+  // fit mixes root.matrixWorld with the bones' fresh world positions)
+  P.root.updateWorldMatrix(true, true);
   for (const [m, lv, i] of meshes) {
     const key = `${id}|${P.asset.name}|${lv}|${i}`;
     let geo = cache.get(key);
@@ -273,6 +277,18 @@ export async function applySkin(P, id) {
     // others get nothing to draw, or the copies would fight over the same surface)
     m.geometry = i === 0 ? geo : EMPTY;
     m.material = i === 0 ? mat : m.userData.orig.material;
+    // the projected ground shadow follows the skin too (it is built on the far LOD's first mesh)
+    if (P.shadow && lv === 1 && i === 0) {
+      let sg = cache.get(key + '|shadow');
+      if (!sg) {
+        sg = new THREE.BufferGeometry();
+        for (const a of ['position', 'skinIndex', 'skinWeight']) sg.setAttribute(a, geo.attributes[a]);
+        if (geo.index) sg.setIndex(geo.index);
+        cache.set(key + '|shadow', sg);
+      }
+      if (!P.shadow.userData.orig) P.shadow.userData.orig = P.shadow.geometry;
+      P.shadow.geometry = sg;
+    }
     // (hair cards of the original body gone: the skin is one opaque mesh)
   }
   P.skin = id;

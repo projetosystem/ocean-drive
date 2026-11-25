@@ -38,6 +38,7 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     <label for="f1npc">Skin dos NPCs</label><select id="f1npc"></select>
     <label for="f1car">Spawnar veículo</label>
     <div class="row"><select id="f1car"></select><button id="f1spawn" type="button">Spawnar</button></div>
+    <div class="row"><button id="f1despawn" type="button" style="flex:1">Despawnar o carro spawnado (mais perto)</button></div>
     <div class="row"><input type="checkbox" id="f1nocars"><label for="f1nocars" style="margin:0">Tirar os carros do mapa</label></div>
     <div class="row"><input type="checkbox" id="f1nonpc"><label for="f1nonpc" style="margin:0">Tirar os NPCs do mapa</label></div>
     <div class="row"><input type="checkbox" id="f1low"><label for="f1low" style="margin:0">Gráficos baixos (PC fraco)</label></div>
@@ -62,6 +63,7 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   for (const [kind, names] of Object.entries(FLEET_POOL)) for (const n of names) if (!spawnable.some((q) => q.mta === n)) spawnable.push({ kind, mta: n, label: n.replace(/^carro-/, '').replace(/-/g, ' ') });
   $('f1car').innerHTML = spawnable.map((q, i) => `<option value="${i}">${q.label.replace(/^./, (c) => c.toUpperCase())}</option>`).join('');
   $('f1spawn').addEventListener('click', () => { const q = spawnable[+$('f1car').value]; if (q) hooks.spawn?.(q.kind, q.mta); });
+  $('f1despawn').addEventListener('click', () => hooks.despawn?.());
   const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); };
   $('f1nocars').addEventListener('change', () => { st.noCars = $('f1nocars').checked; save(st); hooks.cars?.(st.noCars); });
   $('f1nonpc').addEventListener('change', () => { st.noNpcs = $('f1nonpc').checked; save(st); hooks.npcs?.(st.noNpcs); });
