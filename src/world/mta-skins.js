@@ -127,7 +127,7 @@ function fit(src, mesh, donor, root) {
     const tip = { 1: null, '-1': null };
     for (let i = 0; i < n0; i++) {
       const x = pos.getX(i), y = pos.getY(i), sg = x > 0 ? 1 : -1;
-      if (y < ymin + 0.35 * H || y > ymin + 0.9 * H) continue;
+      if (y < ymin + 0.25 * H || y > ymin + 0.9 * H) continue;
       if (!tip[sg] || Math.abs(x) > Math.abs(tip[sg].x)) tip[sg] = { x, y };
     }
     const ang = {};
@@ -143,7 +143,9 @@ function fit(src, mesh, donor, root) {
       let nx = nrm0 ? nrm0.getX(i) : 0, ny = nrm0 ? nrm0.getY(i) : 1;
       const sg = x > 0 ? 1 : -1;
       // armness: well outside the torso, above the thighs
-      const w = sstep(shX * 0.9, shX * 2.2, Math.abs(x)) * sstep(ymin + 0.38 * H, ymin + 0.55 * H, y);
+      // (the hands of an arm hanging down are at hip height: the cut-off is low, or they stay behind and
+      // are carried by the legs, curling in at the hip when walking)
+      const w = sstep(shX * 0.95, shX * 1.6, Math.abs(x)) * sstep(ymin + 0.25 * H, ymin + 0.34 * H, y);
       AW[i] = w;
       if (w > 0 && ang[sg]) {
         const th = ang[sg] * w, c = Math.cos(th), sn = Math.sin(th);
