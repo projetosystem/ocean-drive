@@ -6,6 +6,9 @@ import { skinList, applySkin } from '../world/mta-skins.js';
 import { FLEET_POOL, SPAWN_EXTRA, loadMta } from '../world/mta-vehicles.js';
 
 const KEY = 'od.f1';
+// the sound categories of audio/index.js (setCategoryMuted)
+const SOUNDS = [['sea', 'Mar'], ['wind', 'Vento / palmeiras'], ['gulls', 'Gaivotas'], ['traffic', 'Carros do trânsito'], ['cars', 'Meu veículo (motor)'],
+  ['horn', 'Buzinas'], ['steps', 'Passos'], ['radio', 'Rádio'], ['music', 'Música do bar']];
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } };
 const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* private window */ } };
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
@@ -13,6 +16,7 @@ const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h =
 export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   if (shot) return null;
   const st = { fps: false, player: '', npc: '', noCars: false, noNpcs: false, low: false, ...load() };
+  st.mute = { ...(st.mute ?? {}) };
   let skins = [];
   const css = document.createElement('style');
   css.textContent = `
@@ -27,6 +31,8 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     #f1 button:hover { background: #4d3828; }
     #f1 .row select { flex: 1; min-width: 0; }
     #f1 .row { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; }
+    #f1 .snd { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+    #f1 .snd .chk { display: flex; align-items: center; gap: 5px; margin: 1px 0; color: #fff4e6; font-size: 11px; }
     #f1 .hint { margin-top: 10px; font-size: 10.5px; color: rgba(255, 244, 230, 0.5); }`;
   document.head.appendChild(css);
   const el = document.createElement('div');
@@ -42,7 +48,9 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     <div class="row"><input type="checkbox" id="f1nocars"><label for="f1nocars" style="margin:0">Tirar os carros do mapa</label></div>
     <div class="row"><input type="checkbox" id="f1nonpc"><label for="f1nonpc" style="margin:0">Tirar os NPCs do mapa</label></div>
     <div class="row"><input type="checkbox" id="f1low"><label for="f1low" style="margin:0">Gráficos baixos (PC fraco)</label></div>
-    <div class="hint">F1 abre / fecha · skins do MTA</div>`;
+    <label>Sons (marque para tirar)</label>
+    <div class="snd">${SOUNDS.map(([k, t]) => `<label class="chk"><input type="checkbox" data-mute="${k}"> ${t}</label>`).join('')}</div>
+    <div class="hint">B dentro de um carro: caixas de som · F1 abre / fecha · skins do MTA</div>`;
   document.body.appendChild(el);
   // (keys typed in the panel are not the game's)
   for (const t of ['keydown', 'keyup']) el.addEventListener(t, (e) => { if (e.key !== 'F1') e.stopPropagation(); });
@@ -65,7 +73,13 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   $('f1car').innerHTML = spawnable.map((q, i) => `<option value="${i}">${q.label.replace(/^./, (c) => c.toUpperCase())}</option>`).join('');
   $('f1spawn').addEventListener('click', async () => { const q = spawnable[+$('f1car').value]; if (!q) return; await loadMta(q.mta); hooks.spawn?.(q.kind, q.mta); });
   $('f1despawn').addEventListener('click', () => hooks.despawn?.());
-  const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); };
+  const applyMutes = () => { for (const [k] of SOUNDS) hooks.audio?.(k, !!st.mute[k]); };
+  for (const c of el.querySelectorAll('[data-mute]')) {
+    c.checked = !!st.mute[c.dataset.mute];
+    c.addEventListener('change', () => { st.mute[c.dataset.mute] = c.checked; save(st); hooks.audio?.(c.dataset.mute, c.checked); });
+  }
+  applyMutes();
+  const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); applyMutes(); };
   $('f1nocars').addEventListener('change', () => { st.noCars = $('f1nocars').checked; save(st); hooks.cars?.(st.noCars); });
   $('f1nonpc').addEventListener('change', () => { st.noNpcs = $('f1nonpc').checked; save(st); hooks.npcs?.(st.noNpcs); });
   $('f1low').addEventListener('change', () => { st.low = $('f1low').checked; save(st); hooks.low?.(st.low); });

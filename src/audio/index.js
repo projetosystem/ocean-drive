@@ -62,17 +62,27 @@ function applyListener(ctx, L, immediate) {
   }
 }
 
-function buildScene(env, reduced) {
+// Each sound module writes to its own bus (a gain in front of the dry / reverb sends), so a
+// category can be switched off from the F1 panel (api.setCategoryMuted): sea, wind, gulls,
+// traffic, cars (the ridden vehicle), steps, music, radio.
+function buildScene(env, reduced, buses) {
+  const via = (cat) => {
+    const g = new GainNode(env.ctx, { gain: 1 });
+    const r = new GainNode(env.ctx, { gain: 1 });
+    g.connect(env.dry); r.connect(env.reverb);
+    buses[cat] = [g, r];
+    return { ...env, dry: g, reverb: r };
+  };
   return {
-    waves: createWaves(env, { waterlineX: WATERLINE }),
-    gulls: createGulls(env),
+    waves: createWaves(via('sea'), { waterlineX: WATERLINE }),
+    gulls: createGulls(via('gulls')),
     // fewer simultaneous voices on small devices: every other palm-cluster rustle source
-    wind: createWind(env, reduced ? PALMS.filter((_, i) => i % 2 === 0) : PALMS),
-    traffic: createTrafficAudio(env, { voices: reduced ? 2 : 3 }),
-    music: createMusic(env, PATIO),
-    steps: createFootsteps(env),
-    vehicles: createVehicleAudio(env),
-    radio: createRadio(env, { reduced }),
+    wind: createWind(via('wind'), reduced ? PALMS.filter((_, i) => i % 2 === 0) : PALMS),
+    traffic: createTrafficAudio(via('traffic'), { voices: reduced ? 2 : 3 }),
+    music: createMusic(via('music'), PATIO),
+    steps: createFootsteps(via('steps')),
+    vehicles: createVehicleAudio(via('cars')),
+    radio: createRadio(via('radio'), { reduced }),
   };
 }
 
@@ -91,6 +101,8 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
   let bassAmt = 0;
   let gullSource = null;   // BIRDS hook: calls come from real gulls
   let ducked = false;
+  const buses = {}, muteCat = {};   // (category -> [dry gain, reverb gain]; category -> muted)
+  const applyCats = () => { for (const [c, gs] of Object.entries(buses)) for (const g of gs) g.gain.setTargetAtTime(muteCat[c] ? 0 : 1, ctx.currentTime, 0.05); };
 
   function tick() {
     if (!live()) return;
@@ -128,7 +140,8 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
         env = createEngine(ctx);
         Object.assign(env.listener, L);
         applyListener(ctx, L, true);
-        parts = buildScene(env, reduced);
+        parts = buildScene(env, reduced, buses);
+        applyCats();
         parts.gulls.setSource(gullSource);   // BIRDS hook
         if (bassAmt) parts.radio.setBass(bassAmt);
         const now = ctx.currentTime;
@@ -162,10 +175,14 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
     // the ridden vehicle's sounds, once per frame: state = { kind: 'bike' | 'atv' | 'car' | null, ... }
     // (see audio/vehicles.js); { kind: null } switches them off
     vehicle(state) {
-      if (live()) parts.vehicles.update(state);
+      if (live()) parts.vehicles.update(muteCat.horn && state?.horn ? { ...state, horn: false } : state);
     },
     surfaceAt,
     setAutoSteps(on) { auto = !!on; },
+    // F1 panel: switch one category of sound off / on: sea, wind, gulls, traffic, cars, horn,
+    // steps, music, radio (kept for when the audio starts)
+    setCategoryMuted(cat, on) { muteCat[cat] = !!on; if (ctx) applyCats(); },
+    get mutedCategories() { return { ...muteCat }; },
     setMuted(m) { muted = !!m; applyVolume(); },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); applyVolume(); },
     get muted() { return muted; },
@@ -175,7 +192,7 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
     onWave(cb) { waveCbs.add(cb); return () => waveCbs.delete(cb); },
     // traffic (world/traffic.js): the cars' states once per frame; horn(h) = { x, z, classic }
     traffic(cars) { trafficCars = cars; },
-    horn(h) { if (live()) parts.traffic.horn(h); },
+    horn(h) { if (live() && !muteCat.horn) parts.traffic.horn(h); },
     // the car radio (audio/radio.js): next() steps Off -> the three stations -> Off (starting
     // the audio if needed: call from the key / tap); cabin({ inside, open, speed })
     radio: {

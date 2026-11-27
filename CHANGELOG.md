@@ -17,6 +17,8 @@
 - MTA skins reconverted with every part (face, shirt, trousers, shoes...: the BinMesh index lists of the DFFs were not read, so each skin had one texture over the whole body); `world/mta-skins.js` merges the parts with one material each.
 
 - F1 panel: button to despawn the spawned car; low graphics redraws the sun shadow every 1 s instead of every 0.2 s (no recompile hitch); the BMW i8 and the Saveiro Cross (in the files, never used) are now in the fleet and in the spawn list.
+- Sound: the F1 panel can switch each kind of sound off (sea, palm wind, gulls, traffic cars, own vehicle, horns, steps, radio, bar music); each module now has its own bus in audio/index.js (setCategoryMuted).
+- Sound system (B): works in every car, not only the convertible; one saved layout per car model.
 - MTA skins: hands and forearms of arms hanging at the sides were left behind when the arms were raised (carried by the hips, they curled in like hooks when walking); the whole arm is raised now.
 - MTA skins: a skin chosen before the game starts no longer comes out stretched (the fit used a stale world matrix of the person's parent); the projected ground shadow now follows the skin.
 - MTA skins: the arms are matched to the skeleton (shoulder at the arm bone, length to the hand bone), so the elbow no longer folds into the belly and the hands are not stretched.

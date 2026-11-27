@@ -342,6 +342,7 @@ window.__f1 = createF1Panel({
   hooks: {
     spawn: (kind, mta) => vehicles.spawn?.(kind, mta),
     despawn: () => vehicles.despawn?.(),
+    audio: (cat, on) => audio.setCategoryMuted?.(cat, on),
     cars: (hide) => { traffic.setOff?.(hide); vehicles.setFleetHidden?.(hide); cars.setParkedHidden?.(hide); },
     npcs: (hide) => people?.setHidden?.(hide),
     low: setLowGfx,

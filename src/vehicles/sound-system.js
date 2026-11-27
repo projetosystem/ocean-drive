@@ -1,8 +1,8 @@
-// Car sound system: speaker boxes (sub, trio, paredão, horn) attached to the hero car's sprung
-// body, editable in game (position, rotation, W/H/D), saved in localStorage, and tied to the
+// Car sound system: speaker boxes (sub, trio, paredão, horn) attached to the car being driven
+// (every car: its own layout is kept per model; the convertible keeps its old one), editable in game (position, rotation, W/H/D), saved in localStorage, and tied to the
 // radio: the bigger the boxes, the more bass (audio.radio.setBass).
 //
-//   B             open / close the editor (while in the convertible)
+//   B             open / close the editor (while in any car)
 //   Tab           next box          Enter  add a box (cycles the type)     Delete  remove it
 //   T             change the type of the selected box
 //   Arrows        move x / z        PageUp / PageDown  move up / down
@@ -16,7 +16,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-const STORE = 'od.sound.hero';
+const STORE = 'od.sound.';   // + profile: 'hero', or '<body>:<model>' for the other cars
 const TYPES = {
   sub:     { label: 'Subwoofer', size: [0.55, 0.5, 0.45], cols: 1, rows: 1, glb: null },
   trio:    { label: 'Trio',      size: [0.77, 0.38, 0.33], cols: 3, rows: 1, glb: 'models/sound/trio.glb' },
@@ -76,14 +76,11 @@ function buildBox(type, w, h, d) {
 }
 
 export function createSoundSystem({ root, audio, vehicles, shot = false }) {
-  if (!root) return null;
-  const sway = root.children[0];
-  const body = sway?.children[0] ?? root;
-  const holder = new THREE.Group();
-  holder.name = 'sound-system';
-  body.add(holder);
-
-  let items = [];           // { type, x,y,z,w,h,d,ry,rx, node, cones, model }
+  if (!vehicles) return null;
+  const heroBody = root ? (root.children[0]?.children[0] ?? root) : null;
+  // one profile (holder + boxes) per car model; the one in use is items / holder / store
+  const profiles = new Map();
+  let holder = new THREE.Group(), items = [], store = STORE + 'hero', boot = BOOT, curKey = null, attachedTo = null;
   let sel = 0, editing = false;
   const glbs = {};           // type -> Promise<gltf|null>
 
@@ -134,7 +131,7 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
 
   function make(type, o = {}) {
     const T = TYPES[type];
-    const it = { type, x: BOOT.x, y: BOOT.y, z: BOOT.z, w: T.size[0], h: T.size[1], d: T.size[2], ry: Math.PI, rx: 0, ...o };
+    const it = { type, x: boot.x, y: boot.y, z: boot.z, w: T.size[0], h: T.size[1], d: T.size[2], ry: Math.PI, rx: 0, ...o };
     rebuild(it);
     return it;
   }
@@ -146,13 +143,13 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
   }
   function save() {
     try {
-      localStorage.setItem(STORE, JSON.stringify(items.map(({ type, x, y, z, w, h, d, ry, rx }) => ({ type, x, y, z, w, h, d, ry, rx }))));
+      localStorage.setItem(store, JSON.stringify(items.map(({ type, x, y, z, w, h, d, ry, rx }) => ({ type, x, y, z, w, h, d, ry, rx }))));
     } catch { /* storage blocked */ }
     applyBass();
   }
   function load() {
     try {
-      const raw = JSON.parse(localStorage.getItem(STORE) || '[]');
+      const raw = JSON.parse(localStorage.getItem(store) || '[]');
       if (Array.isArray(raw)) for (const o of raw) if (TYPES[o?.type]) items.push(make(o.type, o));
     } catch { /* ignore */ }
     applyBass();
@@ -197,8 +194,37 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
 <div class="k"><b>Enter</b> add · <b>Tab</b> next · <b>T</b> type · <b>Del</b> remove<br><b>←↑↓→</b> move · <b>PgUp/Dn</b> height<br><b>U/O</b> W · <b>I/K</b> H · <b>J/L</b> D · <b>, .</b> turn · <b>[ ]</b> tilt<br><b>Shift</b> fine · <b>C</b> camera · <b>B</b> done</div>`;
   }
 
-  const inHero = () => vehicles.currentEntry?.origin === 'hero' && vehicles.currentEntry?.kind === 'car';
+  const inHero = () => vehicles.currentEntry?.kind === 'car';   // (any car)
+  // the car being driven: its profile's boxes are shown on it
+  function useEntry(e) {
+    const car = e && e.kind === 'car' ? e : null;
+    const key = !car ? null : car.origin === 'hero' ? 'hero' : `${car.body}:${car.drive?.model ?? ''}`;
+    if (key === curKey) return;
+    if (editing) { editing = false; refreshEdges(); render(); }
+    // (the boxes of another car are taken off; the convertible's stay on)
+    if (curKey && curKey !== 'hero') holder.removeFromParent();
+    curKey = key;
+    attachedTo = null;
+    if (!key) return;
+    let pr = profiles.get(key);
+    if (!pr) {
+      const h = new THREE.Group();
+      h.name = 'sound-system';
+      pr = { holder: h, items: [], store: STORE + key, boot: key === 'hero' ? BOOT : { x: 0, y: 0.62, z: -((car.v?.spec?.length ?? 4.6) / 2) + 0.3 } };
+      profiles.set(key, pr);
+      holder = h; items = pr.items; store = pr.store; boot = pr.boot;
+      load();
+    }
+    holder = pr.holder; items = pr.items; store = pr.store; boot = pr.boot;
+    sel = 0;
+    const r = car.drive?.root;
+    const body = key === 'hero' ? heroBody : r ?? null;
+    if (body && holder.parent !== body) body.add(holder);
+    attachedTo = body;
+    applyBass();
+  }
   function setEditing(on) {
+    useEntry(vehicles.currentEntry);
     if (on && !inHero()) return;
     editing = on;
     if (on && !items.length) { items.push(make('trio')); sel = 0; save(); }
@@ -254,7 +280,15 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     window.addEventListener('keydown', onKey, true);   // capture: the editor's keys never reach the car
     ui();
   }
-  load();
+  // the convertible's own boxes, as before (on its body whether or not it is driven)
+  if (heroBody) {
+    const h = new THREE.Group();
+    h.name = 'sound-system';
+    heroBody.add(h);
+    holder = h; items = []; store = STORE + 'hero'; boot = BOOT;
+    profiles.set('hero', { holder, items, store, boot });
+    load();
+  }
 
   let t = 0;
   return {
@@ -263,6 +297,7 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     setEditing,
     // called once a frame: the cones pump with the bass while the radio plays
     update(dt) {
+      useEntry(vehicles.currentEntry);
       if (!items.length) return;
       if (editing && !inHero()) setEditing(false);
       t += dt;
@@ -271,6 +306,6 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
       for (const it of items) for (const c of it.cones) c.node.position.z = c.z0 - beat * c.r * 0.12;
       if (editing && Math.floor(t * 4) !== Math.floor((t - dt) * 4)) render();   // the bass bar
     },
-    dispose() { window.removeEventListener('keydown', onKey, true); body.remove(holder); panel?.remove(); },
+    dispose() { window.removeEventListener('keydown', onKey, true); for (const p of profiles.values()) p.holder.removeFromParent(); panel?.remove(); },
   };
 }

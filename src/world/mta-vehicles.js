@@ -305,7 +305,9 @@ export function createMtaFleet(scene, fleet, { env, seat, near = 62 }) {
       if (!gltf) { if (name) loadMta(name); return null; }
       const I = instantiate(gltf, { color: color ?? 0xb9bcbf, length: lengthOf(kind), env });
       I.name = name;
-      return carView(scene, I, kind);
+      const view = carView(scene, I, kind);
+      view.model = name;   // (the sound system keeps one layout per model)
+      return view;
     },
     preload(kinds = Object.keys(FLEET_POOL)) { for (const k of kinds) for (const n of FLEET_POOL[k]) loadMta(n); },
   };

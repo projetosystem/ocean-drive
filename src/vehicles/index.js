@@ -835,11 +835,22 @@ export function createVehicles(scene, {
       const col = color ?? paints[Math.floor(Math.random() * paints.length)];
       const view = kit.makeDrivable(kind, col, mtaName);
       const half = (OPEN_SPECS[kind].width ?? 1.9) / 2;
+      // (the first free spot: ahead of the walker, then further and to the sides; a narrow pavement
+      // is full of walls, so the road may be the only free place)
+      const rx = fz, rz = -fx;
       let x = walker.pos.x + fx * (half + 3), z = walker.pos.y + fz * (half + 3);
       const v = createVehicle(OPEN_SPECS[kind], { x, z, yaw: yaw + Math.PI / 2 }, world);
       v.parked = true; v.engineOn = false;
-      // (clear of walls and props: slid ahead until nothing is in the way)
-      for (let k = 0; k < 40 && blockedAt(v, x, z, v.yaw, world); k++) { x += fx * 0.5; z += fz * 0.5; Object.assign(v, { x, z }); }
+      let found = false;
+      for (const d of [half + 3, half + 5, half + 8, half + 12]) {
+        for (const lat of [0, 4, -4, 8, -8]) {
+          const cx = walker.pos.x + fx * d + rx * lat, cz = walker.pos.y + fz * d + rz * lat;
+          Object.assign(v, { x: cx, z: cz });
+          if (!blockedAt(v, cx, cz, v.yaw, world)) { x = cx; z = cz; found = true; break; }
+        }
+        if (found) break;
+      }
+      if (!found) Object.assign(v, { x, z });
       settle(v, world);
       const e = { kind: 'car', body: kind, origin: 'traffic', color: col, v, m: null, drive: view, kick: 1, startT: 0, door: doorZ(kind), used: clock, spawned: true };
       list.push(e);
