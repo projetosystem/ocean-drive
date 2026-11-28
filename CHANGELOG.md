@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-28: speakers stay on the car
+
+- The [B] boxes stay on a car when the player gets out (a copy is left on that car); the link music is fixed to the car's body, so it stays there as you walk away. Outside volume is louder and falls off more slowly (up to 300%).
+
 ## 2026-11-28: music panel [R]
 
 - The car radio (Q) is gone. [R] opens the music panel: link (.mp3 / YouTube) or file, 3D from the car's speakers, with separate volumes inside and outside the car. The link box moved out of F1; R no longer recovers the vehicle (Backspace still does).

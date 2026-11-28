@@ -83,6 +83,7 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
   let holder = new THREE.Group(), items = [], store = STORE + 'hero', boot = BOOT, curKey = null, attachedTo = null;
   let sel = 0, editing = false;
   const glbs = {};           // type -> Promise<gltf|null>
+  const ghosts = new Map();  // car body -> the copy of the boxes left on it
 
   function loadGlb(type) {
     const url = TYPES[type].glb;
@@ -201,8 +202,18 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     const key = !car ? null : car.origin === 'hero' ? 'hero' : car.kind !== 'car' ? car.kind : `${car.body}:${car.drive?.model ?? ''}`;
     if (key === curKey) return;
     if (editing) { editing = false; refreshEdges(); render(); }
-    // (the boxes of another car are taken off; the convertible's stay on)
-    if (curKey && curKey !== 'hero') holder.removeFromParent();
+    // (the convertible's boxes stay on; those of another car stay on THAT car as a copy when the
+    // player gets out, and the profile's own boxes go to the next car)
+    if (curKey && curKey !== 'hero') {
+      if (holder.parent && holder.parent === attachedTo && items.length) {
+        const g = holder.clone(true);
+        g.name = 'sound-system-parked';
+        ghosts.get(attachedTo)?.removeFromParent();
+        ghosts.set(attachedTo, g);
+        attachedTo.add(g);
+      }
+      holder.removeFromParent();
+    }
     curKey = key;
     attachedTo = null;
     if (!key) return;
@@ -221,6 +232,7 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     sel = 0;
     const r = car.kind === 'car' ? car.drive?.root : (car.m?.tilt ?? car.m?.root);
     const body = key === 'hero' ? heroBody : r ?? null;
+    if (body && ghosts.has(body)) { ghosts.get(body).removeFromParent(); ghosts.delete(body); }
     if (body && holder.parent !== body) body.add(holder);
     attachedTo = body;
     applyBass();
@@ -298,13 +310,15 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     // car in use (or of the convertible's when on foot); follows the car as it drives away
     anchor() {
       useEntry(vehicles.currentEntry);
-      const pr = profiles.get(curKey ?? 'hero');
+      const body = attachedTo ?? heroBody;
+      const it = (profiles.get(curKey ?? 'hero')?.items ?? [])[0];
+      const off = it ? new THREE.Vector3(it.x, it.y, it.z) : new THREE.Vector3(0, 0.8, -1.5);
       const v = new THREE.Vector3();
+      // (fixed to the car's body: the music stays in the car when the player walks away)
       return () => {
-        if (!pr) return null;
-        const o = pr.items[0]?.node ?? pr.holder;
-        o.updateWorldMatrix(true, false);
-        return o.getWorldPosition(v);
+        if (!body) return null;
+        body.updateWorldMatrix(true, false);
+        return v.copy(off).applyMatrix4(body.matrixWorld);
       };
     },
     get editing() { return editing; },

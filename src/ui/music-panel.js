@@ -10,7 +10,7 @@ const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catc
 
 export function createMusicPanel({ hooks = {}, shot = false }) {
   if (shot) return null;
-  const st = { link: '', vIn: 0.8, vOut: 1.2, ...load() };
+  const st = { link: '', vIn: 0.8, vOut: 1.8, ...load() };
   const linker = createLinkPlayer(hooks);
   linker.setVolumes(st.vIn, st.vOut);
   const css = document.createElement('style');
@@ -40,8 +40,8 @@ export function createMusicPanel({ hooks = {}, shot = false }) {
     <div class="row"><input id="muslink" type="text" placeholder="Link .mp3 ou YouTube"><button id="musplay" type="button">Tocar</button><button id="musstop" type="button">■</button></div>
     <div class="row"><input id="musfile" type="file" accept="audio/*" style="max-width:100%"></div>
     <h4>Volume</h4>
-    <div class="row"><span class="v">Dentro</span><input id="musin" type="range" min="0" max="200" step="1"><span class="n" id="musinn"></span></div>
-    <div class="row"><span class="v">Fora</span><input id="musout" type="range" min="0" max="200" step="1"><span class="n" id="musoutn"></span></div>
+    <div class="row"><span class="v">Dentro</span><input id="musin" type="range" min="0" max="300" step="1"><span class="n" id="musinn"></span></div>
+    <div class="row"><span class="v">Fora</span><input id="musout" type="range" min="0" max="300" step="1"><span class="n" id="musoutn"></span></div>
     <div class="hint">Dentro = no carro / junto das caixas · Fora = andando longe dele (diminui com a distância).<br>A música sai das caixas [B] do carro em 3D. R fecha.</div>`;
   document.body.appendChild(el);
   for (const t of ['keydown', 'keyup']) el.addEventListener(t, (e) => { if (e.code !== 'KeyR' && e.key !== 'Escape') e.stopPropagation(); });

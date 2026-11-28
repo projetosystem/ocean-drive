@@ -37,9 +37,9 @@ function loadYT() {
 // With them the music is 3D: it comes out of the car's speakers (a PannerNode where the browser lets the
 // page process the audio; otherwise, and for YouTube, only the volume follows the distance).
 export function createLinkPlayer(hooks = {}) {
-  let el = null, muted = false, vIn = 0.8, vOut = 1.2, kind = null, pan = null, vg = null, src = null, where = null, raf = 0;
-  const REF = 8, NEAR = 3.5;   // (inside the car / next to the speakers: closer than NEAR)
-  const fall = (d) => Math.min(1, REF / Math.max(d, REF)) ** 0.9;
+  let el = null, muted = false, vIn = 0.8, vOut = 1.8, kind = null, pan = null, vg = null, src = null, where = null, raf = 0;
+  const REF = 16, NEAR = 3.5;   // (inside the car / next to the speakers: closer than NEAR)
+  const fall = (d) => Math.min(1, REF / Math.max(d, REF)) ** 0.6;
   let inside = false;
   function tick() {
     raf = 0;
@@ -67,7 +67,7 @@ export function createLinkPlayer(hooks = {}) {
     if (!h || !el) return;
     try {
       src = h.ctx.createMediaElementSource(el);
-      pan = new PannerNode(h.ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: REF, rolloffFactor: 0.9, maxDistance: 400 });
+      pan = new PannerNode(h.ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: REF, rolloffFactor: 0.5, maxDistance: 400 });
       vg = new GainNode(h.ctx, { gain: 0 });
       src.connect(pan); pan.connect(vg); vg.connect(h.out);
     } catch { pan = null; src = null; vg = null; }
@@ -91,7 +91,7 @@ export function createLinkPlayer(hooks = {}) {
     setMuted(m) { muted = !!m; apply(); },
     // volume inside the car / next to the speakers, and outside it (0..2; the browser caps a plain
     // <audio> at 1, so above that only the 3D path gets louder)
-    setVolumes(inside, outside) { vIn = Math.max(0, Math.min(2, inside)); vOut = Math.max(0, Math.min(2, outside)); },
+    setVolumes(inside, outside) { vIn = Math.max(0, Math.min(3, inside)); vOut = Math.max(0, Math.min(3, outside)); },
     get inside() { return inside; },
     get source() { return kind; },
     stop,
