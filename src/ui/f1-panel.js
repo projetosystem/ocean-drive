@@ -3,6 +3,7 @@
 //   Player: the original body or one skin (on foot, in the car, in third person).
 //   NPCs:   the originals, one skin for everyone, or a mix of all skins.
 import { skinList, applySkin } from '../world/mta-skins.js';
+import { createLinkPlayer } from '../audio/link-player.js';
 import { FLEET_POOL, SPAWN_EXTRA, loadMta } from '../world/mta-vehicles.js';
 
 const KEY = 'od.f1';
@@ -31,6 +32,7 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     #f1 button:hover { background: #4d3828; }
     #f1 .row select { flex: 1; min-width: 0; }
     #f1 .row { display: flex; align-items: center; gap: 8px; margin: 2px 0 6px; }
+    #f1 input[type=text] { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(255, 236, 205, 0.25); background: #241c18; color: #fff4e6; font: inherit; }
     #f1 .snd { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
     #f1 .snd .chk { display: flex; align-items: center; gap: 5px; margin: 1px 0; color: #fff4e6; font-size: 11px; }
     #f1 .hint { margin-top: 10px; font-size: 10.5px; color: rgba(255, 244, 230, 0.5); }`;
@@ -50,6 +52,9 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     <div class="row"><input type="checkbox" id="f1low"><label for="f1low" style="margin:0">Gráficos baixos (PC fraco)</label></div>
     <label>Sons (marque para tirar)</label>
     <div class="snd">${SOUNDS.map(([k, t]) => `<label class="chk"><input type="checkbox" data-mute="${k}"> ${t}</label>`).join('')}</div>
+    <label for="f1link">Música por link (.mp3 ou YouTube)</label>
+    <div class="row"><input id="f1link" type="text" placeholder="https://…"><button id="f1play" type="button">Tocar</button><button id="f1stop" type="button">■</button></div>
+    <div id="f1linkmsg" class="hint" style="margin-top:0"></div>
     <div class="hint">B dentro de um carro: caixas de som · F1 abre / fecha · skins do MTA</div>`;
   document.body.appendChild(el);
   // (keys typed in the panel are not the game's)
@@ -73,10 +78,21 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   $('f1car').innerHTML = spawnable.map((q, i) => `<option value="${i}">${q.label.replace(/^./, (c) => c.toUpperCase())}</option>`).join('');
   $('f1spawn').addEventListener('click', async () => { const q = spawnable[+$('f1car').value]; if (!q) return; await loadMta(q.mta); hooks.spawn?.(q.kind, q.mta); });
   $('f1despawn').addEventListener('click', () => hooks.despawn?.());
-  const applyMutes = () => { for (const [k] of SOUNDS) hooks.audio?.(k, !!st.mute[k]); };
+  // music from a link (an .mp3 / audio file, or YouTube); the 'Rádio' mute silences it too
+  const linker = createLinkPlayer();
+  const linkMsg = (t) => { $('f1linkmsg').textContent = t; };
+  $('f1link').value = st.link ?? '';
+  $('f1play').addEventListener('click', async () => {
+    st.link = $('f1link').value.trim(); save(st);
+    linkMsg('Carregando…');
+    const r = await linker.play(st.link);
+    linkMsg(r.ok ? (r.kind === 'youtube' ? 'Tocando do YouTube.' : 'Tocando.') : r.error);
+  });
+  $('f1stop').addEventListener('click', () => { linker.stop(); linkMsg(''); });
+  const applyMutes = () => { linker.setMuted(!!st.mute.radio); for (const [k] of SOUNDS) hooks.audio?.(k, !!st.mute[k]); };
   for (const c of el.querySelectorAll('[data-mute]')) {
     c.checked = !!st.mute[c.dataset.mute];
-    c.addEventListener('change', () => { st.mute[c.dataset.mute] = c.checked; save(st); hooks.audio?.(c.dataset.mute, c.checked); });
+    c.addEventListener('change', () => { st.mute[c.dataset.mute] = c.checked; save(st); hooks.audio?.(c.dataset.mute, c.checked); if (c.dataset.mute === 'radio') linker.setMuted(c.checked); });
   }
   applyMutes();
   const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); applyMutes(); };

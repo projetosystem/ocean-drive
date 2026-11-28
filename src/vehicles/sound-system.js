@@ -194,11 +194,11 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
 <div class="k"><b>Enter</b> add · <b>Tab</b> next · <b>T</b> type · <b>Del</b> remove<br><b>←↑↓→</b> move · <b>PgUp/Dn</b> height<br><b>U/O</b> W · <b>I/K</b> H · <b>J/L</b> D · <b>, .</b> turn · <b>[ ]</b> tilt<br><b>Shift</b> fine · <b>C</b> camera · <b>B</b> done</div>`;
   }
 
-  const inHero = () => vehicles.currentEntry?.kind === 'car';   // (any car)
+  const inHero = () => !!vehicles.currentEntry;   // (any vehicle: cars, the bike, the quad)
   // the car being driven: its profile's boxes are shown on it
   function useEntry(e) {
-    const car = e && e.kind === 'car' ? e : null;
-    const key = !car ? null : car.origin === 'hero' ? 'hero' : `${car.body}:${car.drive?.model ?? ''}`;
+    const car = e ?? null;
+    const key = !car ? null : car.origin === 'hero' ? 'hero' : car.kind !== 'car' ? car.kind : `${car.body}:${car.drive?.model ?? ''}`;
     if (key === curKey) return;
     if (editing) { editing = false; refreshEdges(); render(); }
     // (the boxes of another car are taken off; the convertible's stay on)
@@ -210,14 +210,16 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     if (!pr) {
       const h = new THREE.Group();
       h.name = 'sound-system';
-      pr = { holder: h, items: [], store: STORE + key, boot: key === 'hero' ? BOOT : { x: 0, y: 0.62, z: -((car.v?.spec?.length ?? 4.6) / 2) + 0.3 } };
+      pr = { holder: h, items: [], store: STORE + key, boot: key === 'hero' ? BOOT : car.kind === 'bike' ? { x: 0, y: 0.5, z: -0.55 } : car.kind === 'atv' ? { x: 0, y: 0.62, z: -0.75 } : { x: 0, y: 0.62, z: -((car.v?.spec?.length ?? 4.6) / 2) + 0.3 } };
+      // (the bike's and the quad's frames have the nose at -z: the boxes are turned half a lap)
+      if (car.kind !== 'car') h.rotation.y = Math.PI;
       profiles.set(key, pr);
       holder = h; items = pr.items; store = pr.store; boot = pr.boot;
       load();
     }
     holder = pr.holder; items = pr.items; store = pr.store; boot = pr.boot;
     sel = 0;
-    const r = car.drive?.root;
+    const r = car.kind === 'car' ? car.drive?.root : (car.m?.tilt ?? car.m?.root);
     const body = key === 'hero' ? heroBody : r ?? null;
     if (body && holder.parent !== body) body.add(holder);
     attachedTo = body;
@@ -227,7 +229,7 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
     useEntry(vehicles.currentEntry);
     if (on && !inHero()) return;
     editing = on;
-    if (on && !items.length) { items.push(make('trio')); sel = 0; save(); }
+    if (on && !items.length) { items.push(make(vehicles.currentEntry?.kind === 'car' ? 'trio' : 'corneta')); sel = 0; save(); }
     refreshEdges();
     render();
   }
