@@ -294,6 +294,19 @@ export function createSoundSystem({ root, audio, vehicles, shot = false }) {
 
   let t = 0;
   return {
+    // where the speakers are, for music by link: a getter of the world position of the boxes of the
+    // car in use (or of the convertible's when on foot); follows the car as it drives away
+    anchor() {
+      useEntry(vehicles.currentEntry);
+      const pr = profiles.get(curKey ?? 'hero');
+      const v = new THREE.Vector3();
+      return () => {
+        if (!pr) return null;
+        const o = pr.items[0]?.node ?? pr.holder;
+        o.updateWorldMatrix(true, false);
+        return o.getWorldPosition(v);
+      };
+    },
     get editing() { return editing; },
     get items() { return items; },
     setEditing,

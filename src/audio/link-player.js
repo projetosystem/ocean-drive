@@ -33,13 +33,46 @@ function loadYT() {
   return ytReady;
 }
 
-export function createLinkPlayer() {
-  let el = null, muted = false, vol = 0.8, kind = null;
+// hooks (all optional): { out(): {ctx, out: GainNode}|null, anchor(): () => {x,y,z}|null, listener(): {x,y,z}|null }
+// With them the music is 3D: it comes out of the car's speakers (a PannerNode where the browser lets the
+// page process the audio; otherwise, and for YouTube, only the volume follows the distance).
+export function createLinkPlayer(hooks = {}) {
+  let el = null, muted = false, vol = 0.8, kind = null, pan = null, src = null, where = null, raf = 0;
+  const REF = 3;
+  const gainAt = (d) => Math.min(1, REF / Math.max(d, REF)) ** 1.3;
+  function tick() {
+    raf = 0;
+    if (!kind) return;
+    const p = where?.();
+    if (p) {
+      if (pan) { const t = pan.context.currentTime; pan.positionX.setTargetAtTime(p.x, t, 0.05); pan.positionY.setTargetAtTime(p.y, t, 0.05); pan.positionZ.setTargetAtTime(p.z, t, 0.05); }
+      else {
+        const l = hooks.listener?.();
+        if (l) { const d = Math.hypot(p.x - l.x, p.y - l.y, p.z - l.z); const g = gainAt(d) * vol; if (el) el.volume = g; if (yt?.setVolume) yt.setVolume(Math.round(g * 100)); }
+      }
+    }
+    raf = requestAnimationFrame(tick);
+  }
+  function route() {
+    // plays the <audio> through a PannerNode placed at the speakers
+    pan = null; src = null;
+    const h = hooks.out?.();
+    if (!h || !el) return;
+    try {
+      src = h.ctx.createMediaElementSource(el);
+      pan = new PannerNode(h.ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: REF, rolloffFactor: 1.3, maxDistance: 400 });
+      src.connect(pan); pan.connect(h.out);
+    } catch { pan = null; src = null; }
+  }
+  function startTick() { where = hooks.anchor?.() ?? null; if (!raf) raf = requestAnimationFrame(tick); }
   const apply = () => {
-    if (el) { el.muted = muted; el.volume = vol; }
-    if (yt?.setVolume) { yt.setVolume(Math.round(vol * 100)); muted ? yt.mute() : yt.unMute(); }
+    if (el) { el.muted = muted; if (pan || !where) el.volume = vol; }
+    if (yt?.setVolume && !where) { yt.setVolume(Math.round(vol * 100)); muted ? yt.mute() : yt.unMute(); }
   };
   function stop() {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    try { src?.disconnect(); pan?.disconnect(); } catch { /* already gone */ }
+    src = pan = null;
     if (el) { el.pause(); el.removeAttribute('src'); el.load(); el = null; }
     try { yt?.stopVideo?.(); } catch { /* player gone */ }
     kind = null;
@@ -53,8 +86,8 @@ export function createLinkPlayer() {
     async playFile(file) {
       if (!file) return { ok: false, error: 'Escolha um arquivo de áudio.' };
       stop();
-      el = new Audio(URL.createObjectURL(file)); el.loop = true; apply();
-      try { await el.play(); kind = 'audio'; return { ok: true, kind }; } catch (e) {
+      el = new Audio(URL.createObjectURL(file)); el.loop = true; route(); apply();
+      try { await el.play(); kind = 'audio'; startTick(); return { ok: true, kind }; } catch (e) {
         el = null; return { ok: false, error: 'Não consegui tocar esse arquivo (' + (e?.message || 'formato não suportado') + ').' };
       }
     },
@@ -74,7 +107,7 @@ export function createLinkPlayer() {
             yt = new YT.Player('od-yt', { width: 200, height: 200, videoId: y.id ?? undefined, ...opts });
           });
           if (y.id) yt.loadVideoById(y.id); else yt.loadPlaylist({ listType: 'playlist', list: y.list });
-          kind = 'youtube'; apply(); yt.playVideo?.();
+          kind = 'youtube'; startTick(); apply(); yt.playVideo?.();
           return { ok: true, kind };
         } catch {
           return { ok: false, error: 'Não deu para carregar o YouTube aqui (a página não pode incorporar o YouTube). No jogo publicado funciona; aqui use um link .mp3.' };
@@ -85,10 +118,10 @@ export function createLinkPlayer() {
       el.crossOrigin = 'anonymous';
       el.loop = true;
       el.src = u;
-      apply();
-      try { await el.play(); kind = 'audio'; return { ok: true, kind }; } catch {
+      route(); apply();
+      try { await el.play(); kind = 'audio'; startTick(); return { ok: true, kind }; } catch {
         // (a host without CORS headers can still be played without the flag)
-        try { el = new Audio(u); el.loop = true; apply(); await el.play(); kind = 'audio'; return { ok: true, kind }; } catch {
+        try { try { src?.disconnect(); pan?.disconnect(); } catch { /* */ } src = pan = null; el = new Audio(u); el.loop = true; apply(); await el.play(); kind = 'audio'; startTick(); return { ok: true, kind }; } catch {
           el = null;
           return { ok: false, error: 'Não consegui tocar esse link. Links do Discord expiram/exigem assinatura e algumas páginas (como o teste hospedado) bloqueiam áudio de outros sites. Use \"Arquivo\" para tocar um .mp3 do seu aparelho.' };
         }

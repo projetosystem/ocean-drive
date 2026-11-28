@@ -90,7 +90,7 @@ function buildScene(env, reduced, buses) {
 // recorder steps it a frame at a time: audio.offline.ctx, audio.offline.tick())
 export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', offline = null } = {}) {
   const reduced = voices === 'reduced';
-  let ctx = null, env = null, parts = null, timer = null;
+  let ctx = null, env = null, parts = null, timer = null, linkGain = null;
   // (an offline context reads 'suspended' between the recorder's steps: it is live throughout)
   const live = () => !!ctx && (offline != null || ctx.state === 'running');
   let muted = false, vol = volume, auto = autoSteps;
@@ -213,6 +213,15 @@ export function createAudio({ volume = 0.8, autoSteps = true, voices = 'full', o
     // the capture recorder's handle on the offline render (null when live)
     get offline() { return offline && ctx ? { ctx, tick } : null; },
 
+    // F1 "music by link": a gain on the radio category into the dry bus (null until the audio runs;
+    // starts it, so call from a click). The caller places its own PannerNode in front of it.
+    linkOut() {
+      if (!ctx) api.start();
+      if (!ctx || !env) return null;
+      if (!linkGain) { linkGain = new GainNode(ctx, { gain: muteCat.radio ? 0 : 1 }); linkGain.connect(env.dry); buses.radio?.push(linkGain); }
+      if (ctx.state !== 'running') ctx.resume?.();
+      return { ctx, out: linkGain };
+    },
     get context() { return ctx; },
     stats() {
       return { state: ctx?.state ?? 'none', spatials: env?.spatials.size ?? 0, cars: trafficCars.length, time: ctx?.currentTime ?? 0 };

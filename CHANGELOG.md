@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-28: 3D music by link
+
+- F1 music (link or file) now comes out of the car's speakers in 3D (PannerNode at the sound-system boxes, follows the car; YouTube follows the distance in volume only). The radio mute silences it.
+
 ## 2026-11-21: MTA maps
 
 - Map materials: GTA's grey tints no longer halve the textures (dark slopes/trees), foliage is cut-out

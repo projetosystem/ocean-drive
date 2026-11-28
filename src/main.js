@@ -346,6 +346,7 @@ window.__f1 = createF1Panel({
     cars: (hide) => { traffic.setOff?.(hide); vehicles.setFleetHidden?.(hide); cars.setParkedHidden?.(hide); },
     npcs: (hide) => people?.setHidden?.(hide),
     low: setLowGfx,
+    link: { out: () => audio.linkOut?.(), anchor: () => soundSystem?.anchor?.(), listener: () => camera.position },
   },
   hud: document.getElementById('hud'), bodies: () => { const b = people?.bodies?.() ?? { npc: [], player: [] }; if (avatar?.P) b.player.push(avatar.P); return b; }, shot: SHOT });
 window.__radio = { next: radioNext, get station() { return audio.radio.station; }, get name() { return audio.radio.name; }, ui: radioUi };

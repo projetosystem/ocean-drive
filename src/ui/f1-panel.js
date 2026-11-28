@@ -80,7 +80,7 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   $('f1spawn').addEventListener('click', async () => { const q = spawnable[+$('f1car').value]; if (!q) return; await loadMta(q.mta); hooks.spawn?.(q.kind, q.mta); });
   $('f1despawn').addEventListener('click', () => hooks.despawn?.());
   // music from a link (an .mp3 / audio file, or YouTube); the 'Rádio' mute silences it too
-  const linker = createLinkPlayer();
+  const linker = createLinkPlayer(hooks.link);
   const linkMsg = (t) => { $('f1linkmsg').textContent = t; };
   $('f1link').value = st.link ?? '';
   $('f1play').addEventListener('click', async () => {
