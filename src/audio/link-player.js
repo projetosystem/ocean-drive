@@ -37,42 +37,51 @@ function loadYT() {
 // With them the music is 3D: it comes out of the car's speakers (a PannerNode where the browser lets the
 // page process the audio; otherwise, and for YouTube, only the volume follows the distance).
 export function createLinkPlayer(hooks = {}) {
-  let el = null, muted = false, vol = 0.8, kind = null, pan = null, src = null, where = null, raf = 0;
-  const REF = 3;
-  const gainAt = (d) => Math.min(1, REF / Math.max(d, REF)) ** 1.3;
+  let el = null, muted = false, vIn = 0.8, vOut = 1.2, kind = null, pan = null, vg = null, src = null, where = null, raf = 0;
+  const REF = 8, NEAR = 3.5;   // (inside the car / next to the speakers: closer than NEAR)
+  const fall = (d) => Math.min(1, REF / Math.max(d, REF)) ** 0.9;
+  let inside = false;
   function tick() {
     raf = 0;
     if (!kind) return;
     const p = where?.();
+    const l = hooks.listener?.();
+    inside = !p || !l ? true : Math.hypot(p.x - l.x, p.y - l.y, p.z - l.z) < NEAR;
+    const base = muted ? 0 : inside ? vIn : vOut;
     if (p) {
       if (pan) { const t = pan.context.currentTime; pan.positionX.setTargetAtTime(p.x, t, 0.05); pan.positionY.setTargetAtTime(p.y, t, 0.05); pan.positionZ.setTargetAtTime(p.z, t, 0.05); }
-      else {
-        const l = hooks.listener?.();
-        if (l) { const d = Math.hypot(p.x - l.x, p.y - l.y, p.z - l.z); const g = gainAt(d) * vol; if (el) el.volume = g; if (yt?.setVolume) yt.setVolume(Math.round(g * 100)); }
-      }
+    }
+    if (vg) vg.gain.setTargetAtTime(base, vg.context.currentTime, 0.1);
+    else {
+      const d = p && l ? Math.hypot(p.x - l.x, p.y - l.y, p.z - l.z) : 0;
+      const g = Math.min(1, base * (inside ? 1 : fall(d)));
+      if (el) el.volume = g;
+      if (yt?.setVolume) yt.setVolume(Math.round(g * 100));
     }
     raf = requestAnimationFrame(tick);
   }
   function route() {
     // plays the <audio> through a PannerNode placed at the speakers
-    pan = null; src = null;
+    pan = null; src = null; vg = null;
     const h = hooks.out?.();
     if (!h || !el) return;
     try {
       src = h.ctx.createMediaElementSource(el);
-      pan = new PannerNode(h.ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: REF, rolloffFactor: 1.3, maxDistance: 400 });
-      src.connect(pan); pan.connect(h.out);
-    } catch { pan = null; src = null; }
+      pan = new PannerNode(h.ctx, { panningModel: 'HRTF', distanceModel: 'inverse', refDistance: REF, rolloffFactor: 0.9, maxDistance: 400 });
+      vg = new GainNode(h.ctx, { gain: 0 });
+      src.connect(pan); pan.connect(vg); vg.connect(h.out);
+    } catch { pan = null; src = null; vg = null; }
   }
   function startTick() { where = hooks.anchor?.() ?? null; if (!raf) raf = requestAnimationFrame(tick); }
   const apply = () => {
-    if (el) { el.muted = muted; if (pan || !where) el.volume = vol; }
-    if (yt?.setVolume && !where) { yt.setVolume(Math.round(vol * 100)); muted ? yt.mute() : yt.unMute(); }
+    if (el) el.muted = muted;
+    if (yt?.setVolume) muted ? yt.mute() : yt.unMute();
+    if (kind && !raf) raf = requestAnimationFrame(tick);
   };
   function stop() {
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
-    try { src?.disconnect(); pan?.disconnect(); } catch { /* already gone */ }
-    src = pan = null;
+    try { src?.disconnect(); pan?.disconnect(); vg?.disconnect(); } catch { /* already gone */ }
+    src = pan = vg = null;
     if (el) { el.pause(); el.removeAttribute('src'); el.load(); el = null; }
     try { yt?.stopVideo?.(); } catch { /* player gone */ }
     kind = null;
@@ -80,7 +89,11 @@ export function createLinkPlayer(hooks = {}) {
   return {
     get playing() { return kind; },
     setMuted(m) { muted = !!m; apply(); },
-    setVolume(v) { vol = Math.max(0, Math.min(1, v)); apply(); },
+    // volume inside the car / next to the speakers, and outside it (0..2; the browser caps a plain
+    // <audio> at 1, so above that only the 3D path gets louder)
+    setVolumes(inside, outside) { vIn = Math.max(0, Math.min(2, inside)); vOut = Math.max(0, Math.min(2, outside)); },
+    get inside() { return inside; },
+    get source() { return kind; },
     stop,
     // plays a file picked from the device (works on any host, incl. the hosted test page)
     async playFile(file) {
@@ -121,7 +134,7 @@ export function createLinkPlayer(hooks = {}) {
       route(); apply();
       try { await el.play(); kind = 'audio'; startTick(); return { ok: true, kind }; } catch {
         // (a host without CORS headers can still be played without the flag)
-        try { try { src?.disconnect(); pan?.disconnect(); } catch { /* */ } src = pan = null; el = new Audio(u); el.loop = true; apply(); await el.play(); kind = 'audio'; startTick(); return { ok: true, kind }; } catch {
+        try { try { src?.disconnect(); pan?.disconnect(); vg?.disconnect(); } catch { /* */ } src = pan = vg = null; el = new Audio(u); el.loop = true; apply(); await el.play(); kind = 'audio'; startTick(); return { ok: true, kind }; } catch {
           el = null;
           return { ok: false, error: 'Não consegui tocar esse link. Links do Discord expiram/exigem assinatura e algumas páginas (como o teste hospedado) bloqueiam áudio de outros sites. Use \"Arquivo\" para tocar um .mp3 do seu aparelho.' };
         }

@@ -32,6 +32,7 @@ import { createExitDrivers } from './world/exit-driver.js';
 import { createMinimap } from './ui/minimap.js';
 import { createRadioUi } from './ui/radio-ui.js';
 import { createSoundSystem } from './vehicles/sound-system.js';
+import { createMusicPanel } from './ui/music-panel.js';
 import { createF1Panel } from './ui/f1-panel.js';
 import { createMapPortal } from './world/mta-maps.js';
 import { releaseGeometryAfterUpload, releaseCanvasesAfterUpload } from './renderer/memory.js';
@@ -315,14 +316,8 @@ const minimap = createMinimap({
   getPin: () => (cars.mazda ? { x: cars.mazda.position.x, z: cars.mazda.position.z } : null),
 });
 window.__minimap = minimap;
-// the car radio: Q (touch: the radio button) steps Off -> three stations -> Off while in a car
+// the car radio is gone: music lives in the [R] panel (ui/music-panel.js), created below once the sound system exists
 const radioUi = createRadioUi({ shot: SHOT });
-const radioNext = () => {
-  if (vehicles.currentEntry?.kind !== 'car') return;
-  const i = audio.radio.next();
-  radioUi.show(audio.radio.name, i);
-};
-addEventListener('keydown', (ev) => { if (ev.code === 'KeyQ' && !ev.repeat && !SHOT) radioNext(); });
 // the hero's speaker boxes: B in the convertible opens the editor (vehicles/sound-system.js)
 const soundSystem = createSoundSystem({ root: cars.drive?.root, audio, vehicles, shot: SHOT });
 window.__sound = soundSystem;
@@ -338,18 +333,22 @@ function setLowGfx(on) {
   requestShadow?.();
 }
 window.__lowGfx = setLowGfx;
+const musicPanel = createMusicPanel({
+  shot: SHOT,
+  hooks: { out: () => audio.linkOut?.(), anchor: () => soundSystem?.anchor?.(), listener: () => camera.position, onOpen: () => audio.start?.() },
+});
+window.__music = musicPanel;
 window.__f1 = createF1Panel({
   hooks: {
     spawn: (kind, mta) => vehicles.spawn?.(kind, mta),
     despawn: () => vehicles.despawn?.(),
-    audio: (cat, on) => audio.setCategoryMuted?.(cat, on),
+    audio: (cat, on) => { audio.setCategoryMuted?.(cat, on); if (cat === 'radio') musicPanel?.setMuted(on); },
     cars: (hide) => { traffic.setOff?.(hide); vehicles.setFleetHidden?.(hide); cars.setParkedHidden?.(hide); },
     npcs: (hide) => people?.setHidden?.(hide),
     low: setLowGfx,
-    link: { out: () => audio.linkOut?.(), anchor: () => soundSystem?.anchor?.(), listener: () => camera.position },
   },
   hud: document.getElementById('hud'), bodies: () => { const b = people?.bodies?.() ?? { npc: [], player: [] }; if (avatar?.P) b.player.push(avatar.P); return b; }, shot: SHOT });
-window.__radio = { next: radioNext, get station() { return audio.radio.station; }, get name() { return audio.radio.name; }, ui: radioUi };
+window.__radio = { next: () => musicPanel?.toggle(), get station() { return -1; }, get name() { return 'Off'; }, ui: radioUi };
 // what the hero's rear-view mirror draws besides the cars (world/cars-glb.js)
 const MIRRORED = new Set(['placeholders', 'hotels', 'palms', 'street', 'ocean', 'parked-paint', 'parked-dark', 'parked-trim', 'parked-tyre']);
 for (const o of scene.children) if (MIRRORED.has(o.name) || o.material?.name === 'Sky') o.userData.mirror = true;
@@ -425,7 +424,7 @@ const howEl = overlay.querySelector('.how');
 if (OPEN_WORLD && howEl) howEl.innerHTML = '<b>Click to walk</b> — WASD to move, mouse to look, Space to jump, Shift to stroll faster, C to see yourself (third person), E to ride the bike or the ATV or get into any parked car (C camera, Space handbrake, H horn, R back to the road), M to mute';
 function enableTouch() {
   if (touch || SHOT) return;
-  touch = createTouchControls(controls, { audio, onRide: () => vehicles.toggle(), onCamera: () => vehicles.toggleView(), onRadio: () => radioNext() });
+  touch = createTouchControls(controls, { audio, onRide: () => vehicles.toggle(), onCamera: () => vehicles.toggleView(), onRadio: () => musicPanel?.toggle() });
   window.__touch = touch;
   fastTravel.attachTouch(touch);
   if (howEl) howEl.innerHTML = OPEN_WORLD

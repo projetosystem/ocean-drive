@@ -3,13 +3,12 @@
 //   Player: the original body or one skin (on foot, in the car, in third person).
 //   NPCs:   the originals, one skin for everyone, or a mix of all skins.
 import { skinList, applySkin } from '../world/mta-skins.js';
-import { createLinkPlayer } from '../audio/link-player.js';
 import { FLEET_POOL, SPAWN_EXTRA, loadMta } from '../world/mta-vehicles.js';
 
 const KEY = 'od.f1';
 // the sound categories of audio/index.js (setCategoryMuted)
 const SOUNDS = [['sea', 'Mar'], ['wind', 'Vento / palmeiras'], ['gulls', 'Gaivotas'], ['traffic', 'Carros do trânsito'], ['cars', 'Meu veículo (motor)'],
-  ['horn', 'Buzinas'], ['steps', 'Passos'], ['radio', 'Rádio'], ['music', 'Música do bar']];
+  ['horn', 'Buzinas'], ['steps', 'Passos'], ['radio', 'Música do painel (R)'], ['music', 'Música do bar']];
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) ?? {}; } catch { return {}; } };
 const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* private window */ } };
 const hash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; };
@@ -52,11 +51,7 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     <div class="row"><input type="checkbox" id="f1low"><label for="f1low" style="margin:0">Gráficos baixos (PC fraco)</label></div>
     <label>Sons (marque para tirar)</label>
     <div class="snd">${SOUNDS.map(([k, t]) => `<label class="chk"><input type="checkbox" data-mute="${k}"> ${t}</label>`).join('')}</div>
-    <label for="f1link">Música por link (.mp3 ou YouTube)</label>
-    <div class="row"><input id="f1link" type="text" placeholder="https://…"><button id="f1play" type="button">Tocar</button><button id="f1stop" type="button">■</button></div>
-    <div class="row"><input id="f1file" type="file" accept="audio/*"></div>
-    <div id="f1linkmsg" class="hint" style="margin-top:0"></div>
-    <div class="hint">B dentro de um carro: caixas de som · F1 abre / fecha · skins do MTA</div>`;
+    <div class="hint">B dentro de um carro: caixas de som · R: painel de música · F1 abre / fecha · skins do MTA</div>`;
   document.body.appendChild(el);
   // (keys typed in the panel are not the game's)
   for (const t of ['keydown', 'keyup']) el.addEventListener(t, (e) => { if (e.key !== 'F1') e.stopPropagation(); });
@@ -79,27 +74,10 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
   $('f1car').innerHTML = spawnable.map((q, i) => `<option value="${i}">${q.label.replace(/^./, (c) => c.toUpperCase())}</option>`).join('');
   $('f1spawn').addEventListener('click', async () => { const q = spawnable[+$('f1car').value]; if (!q) return; await loadMta(q.mta); hooks.spawn?.(q.kind, q.mta); });
   $('f1despawn').addEventListener('click', () => hooks.despawn?.());
-  // music from a link (an .mp3 / audio file, or YouTube); the 'Rádio' mute silences it too
-  const linker = createLinkPlayer(hooks.link);
-  const linkMsg = (t) => { $('f1linkmsg').textContent = t; };
-  $('f1link').value = st.link ?? '';
-  $('f1play').addEventListener('click', async () => {
-    st.link = $('f1link').value.trim(); save(st);
-    linkMsg('Carregando…');
-    const r = await linker.play(st.link);
-    linkMsg(r.ok ? (r.kind === 'youtube' ? 'Tocando do YouTube.' : 'Tocando.') : r.error);
-  });
-  $('f1file').addEventListener('change', async (e) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    linkMsg('Carregando…');
-    const r = await linker.playFile(f);
-    linkMsg(r.ok ? 'Tocando: ' + f.name : r.error);
-  });
-  $('f1stop').addEventListener('click', () => { linker.stop(); linkMsg(''); });
-  const applyMutes = () => { linker.setMuted(!!st.mute.radio); for (const [k] of SOUNDS) hooks.audio?.(k, !!st.mute[k]); };
+  const applyMutes = () => { for (const [k] of SOUNDS) hooks.audio?.(k, !!st.mute[k]); };
   for (const c of el.querySelectorAll('[data-mute]')) {
     c.checked = !!st.mute[c.dataset.mute];
-    c.addEventListener('change', () => { st.mute[c.dataset.mute] = c.checked; save(st); hooks.audio?.(c.dataset.mute, c.checked); if (c.dataset.mute === 'radio') linker.setMuted(c.checked); });
+    c.addEventListener('change', () => { st.mute[c.dataset.mute] = c.checked; save(st); hooks.audio?.(c.dataset.mute, c.checked); });
   }
   applyMutes();
   const applyToggles = () => { hooks.cars?.(st.noCars); hooks.npcs?.(st.noNpcs); hooks.low?.(st.low); applyMutes(); };

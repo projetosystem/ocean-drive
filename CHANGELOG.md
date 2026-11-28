@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-28: music panel [R]
+
+- The car radio (Q) is gone. [R] opens the music panel: link (.mp3 / YouTube) or file, 3D from the car's speakers, with separate volumes inside and outside the car. The link box moved out of F1; R no longer recovers the vehicle (Backspace still does).
+
 ## 2026-11-28: 3D music by link
 
 - F1 music (link or file) now comes out of the car's speakers in 3D (PannerNode at the sound-system boxes, follows the car; YouTube follows the distance in volume only). The radio mute silences it.
