@@ -54,6 +54,7 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     <div class="snd">${SOUNDS.map(([k, t]) => `<label class="chk"><input type="checkbox" data-mute="${k}"> ${t}</label>`).join('')}</div>
     <label for="f1link">Música por link (.mp3 ou YouTube)</label>
     <div class="row"><input id="f1link" type="text" placeholder="https://…"><button id="f1play" type="button">Tocar</button><button id="f1stop" type="button">■</button></div>
+    <div class="row"><input id="f1file" type="file" accept="audio/*"></div>
     <div id="f1linkmsg" class="hint" style="margin-top:0"></div>
     <div class="hint">B dentro de um carro: caixas de som · F1 abre / fecha · skins do MTA</div>`;
   document.body.appendChild(el);
@@ -87,6 +88,12 @@ export function createF1Panel({ hud, bodies, hooks = {}, shot = false }) {
     linkMsg('Carregando…');
     const r = await linker.play(st.link);
     linkMsg(r.ok ? (r.kind === 'youtube' ? 'Tocando do YouTube.' : 'Tocando.') : r.error);
+  });
+  $('f1file').addEventListener('change', async (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    linkMsg('Carregando…');
+    const r = await linker.playFile(f);
+    linkMsg(r.ok ? 'Tocando: ' + f.name : r.error);
   });
   $('f1stop').addEventListener('click', () => { linker.stop(); linkMsg(''); });
   const applyMutes = () => { linker.setMuted(!!st.mute.radio); for (const [k] of SOUNDS) hooks.audio?.(k, !!st.mute[k]); };

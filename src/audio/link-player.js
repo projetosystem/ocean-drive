@@ -49,6 +49,15 @@ export function createLinkPlayer() {
     setMuted(m) { muted = !!m; apply(); },
     setVolume(v) { vol = Math.max(0, Math.min(1, v)); apply(); },
     stop,
+    // plays a file picked from the device (works on any host, incl. the hosted test page)
+    async playFile(file) {
+      if (!file) return { ok: false, error: 'Escolha um arquivo de áudio.' };
+      stop();
+      el = new Audio(URL.createObjectURL(file)); el.loop = true; apply();
+      try { await el.play(); kind = 'audio'; return { ok: true, kind }; } catch (e) {
+        el = null; return { ok: false, error: 'Não consegui tocar esse arquivo (' + (e?.message || 'formato não suportado') + ').' };
+      }
+    },
     // resolves to { ok, kind } or { ok: false, error }
     async play(link) {
       const u = (link ?? '').trim();
@@ -81,7 +90,7 @@ export function createLinkPlayer() {
         // (a host without CORS headers can still be played without the flag)
         try { el = new Audio(u); el.loop = true; apply(); await el.play(); kind = 'audio'; return { ok: true, kind }; } catch {
           el = null;
-          return { ok: false, error: 'Não consegui tocar esse link (precisa ser um arquivo de áudio direto, como .mp3).' };
+          return { ok: false, error: 'Não consegui tocar esse link. Links do Discord expiram/exigem assinatura e algumas páginas (como o teste hospedado) bloqueiam áudio de outros sites. Use \"Arquivo\" para tocar um .mp3 do seu aparelho.' };
         }
       }
     },
